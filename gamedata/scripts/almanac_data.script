@@ -12,7 +12,7 @@ two to the same answers.
     almanac_data.catalog()        the catalog (built on the first call after a load)
 --]]
 
-VERSION = "0.1.0"
+VERSION = "1.0.0"
 
 local KINDS = { i_arty = true, i_arty_junk = true }
 local CONTAINER_SUFFIXES = { "_lead_box", "_af_iam", "_af_aac", "_af_aam" }

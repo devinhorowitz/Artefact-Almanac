@@ -23,7 +23,7 @@ Both wrappers pass every argument through and give back every result, and stand 
 script they wrap is missing.
 --]]
 
-VERSION = "0.1.0"
+VERSION = "1.0.0"
 
 CHECK_MS = 5000         -- how often the tasks are read
 MAX_PENDING = 64        -- queued radio messages remembered at most
