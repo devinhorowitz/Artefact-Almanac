@@ -30,8 +30,8 @@ MUTANTS = {
     "junk": ("if C.artifacts[node.sec].kind == KIND_JUNK then", "if true then"),
     "up_depth": ("out[#out + 1] = { sec = res, via = key, depth = depth }", "out[#out + 1] = { sec = res, via = key, depth = 1 }"),
     "need_top": ("        if not top then\n", "        if true then\n"),
-    "need_copy": ("    local left = {}\n    for k, v in pairs(have or {}) do\n        left[k] = v\n    end\n",
-                  "    local left = have or {}\n"),
+    "need_copy": ("    local left = copy(have)\n    local t = { crafts", "    local left = have or {}\n    local t = { crafts"),
+    "layers_copy": ("    local left = copy(have)\n    local function take", "    local left = have or {}\n    local function take"),
     "missing_count": ("            t.missing_count = t.missing_count + n\n", ""),
     "need_eager": ("want(p[1], amount(p[2], eager) * n, path)", "want(p[1], p[2] * n, path)"),
     "book_item": ("    if not ini_sys:section_exist(book) then\n        return true\n",
@@ -42,6 +42,13 @@ MUTANTS = {
     "stash_range": ("range = (ok and tonumber(range)) or 10", "range = 10"),
     "stash_copy": ("    local t = {}\n    for sec, n in pairs(have or {}) do\n",
                    "    local t = have or {}\n    for sec, n in pairs({}) do\n"),
+    "layers_root_take": ("        if depth > 0 and not under then\n", "        if not under then\n"),
+    "layers_under_take": ("got = below and 0 or take(p[1], k) }", "got = take(p[1], k) }"),
+    "layers_rest": ("            local m = below and n or rest\n", "            local m = n\n"),
+    "layers_loop": ("        local r = not path[s] and recipe_for(s, C)\n", "        local r = recipe_for(s, C)\n"),
+    "layers_center": ("node.slot = (node.kids[1].slot + node.kids[#node.kids].slot) / 2", "node.slot = node.kids[1].slot"),
+    "layers_carried": ("        elseif rest == 0 then\n            node.state = \"carried\"\n", ""),
+    "layers_eager": ("                local k = amount(p[2], eager) * m\n", "                local k = p[2] * m\n"),
 }
 
 WORLD = r"""
@@ -151,6 +158,65 @@ def main():
         r = T.need("c", lua.table_from({"a_junk": 3, "part_p": 8, "part_q": 2}), True)
         eq("need c, eager", (r.crafts, d(r.missing), r.done), (3, {}, True))
         eq("need of what nothing makes", T.need("f", lua.table_from({})), None)
+
+        # the tree in layers: states, counts and slots, and what's missing agreeing with need()
+        def lay(sec, have, eager=False):
+            r = T.layers(sec, lua.table_from(have), eager)
+            if r is None:
+                return None
+
+            def nd(x):
+                return {"sec": x.sec, "n": x.n, "got": x.got, "state": x.state, "slot": x.slot,
+                        "parts": [(p.sec, p.n, p.got) for p in lst(x.parts)], "kids": [nd(k) for k in lst(x.kids)]}
+            rows = [[x.sec for x in lst(row)] for row in lst(r.rows)]
+            return nd(r.root), rows, r.leaves
+
+        def lst(t):
+            return [t[i] for i in range(1, len(t) + 1)]
+
+        def missing(node):
+            out = {}
+            if node["state"] in ("top", "craft", "find"):
+                if node["state"] == "find":
+                    out[node["sec"]] = node["n"] - node["got"]
+                for s, n, got in node["parts"]:
+                    if n > got:
+                        out[s] = out.get(s, 0) + n - got
+            if node["state"] in ("top", "craft"):
+                for k in node["kids"]:
+                    for s, n in missing(k).items():
+                        out[s] = out.get(s, 0) + n
+            return out
+
+        root, rows, leaves = lay("c", {})
+        eq("layers of c, nothing held", (rows, leaves), ([["c"], ["b", "a_junk"], ["a_junk"]], 2))
+        eq("layers: c", (root["state"], root["slot"], root["parts"]), ("top", 1.0, [("part_q", 2, 0)]))
+        b = root["kids"][0]
+        eq("layers: b", (b["n"], b["state"], b["slot"], b["parts"], [(k["sec"], k["n"], k["state"]) for k in b["kids"]]),
+           (2, "craft", 0.5, [("part_p", 10, 0)], [("a_junk", 2, "find")]))
+        eq("layers: a_junk beside b", (root["kids"][1]["state"], root["kids"][1]["slot"]), ("find", 1.5))
+        held = {"b": 1, "a_junk": 1, "part_p": 3, "part_q": 5, "c": 4}
+        root, rows, leaves = lay("c", held)
+        b = root["kids"][0]
+        eq("layers, some held", (root["got"], root["state"], b["got"], b["state"], b["parts"], b["kids"][0]["state"],
+                                  root["kids"][1]["state"], root["parts"]),
+           (0, "top", 1, "craft", [("part_p", 5, 3)], "carried", "find", [("part_q", 2, 2)]))
+        eq("layers miss what need misses", missing(root), dict(T.need("c", lua.table_from(held), False).missing.items()))
+        h = lua.table_from(held)
+        T.layers("c", h, False)
+        eq("have unchanged by layers", d(h), held)
+        root, rows, leaves = lay("c", {"b": 2, "part_p": 5, "part_q": 2})
+        b = root["kids"][0]
+        eq("layers under a carried one", (b["state"], b["parts"], b["kids"][0]["state"], root["parts"]),
+           ("carried", [("part_p", 10, 0)], "under", [("part_q", 2, 2)]))
+        eq("layers miss what need misses, b held",
+           missing(root), dict(T.need("c", lua.table_from({"b": 2, "part_p": 5, "part_q": 2}), False).missing.items()))
+        root, rows, leaves = lay("h", {})
+        eq("layers of h", (rows, leaves, root["slot"], [k["slot"] for k in root["kids"]]),
+           ([["h"], ["b", "c"], ["a_junk", "b", "a_junk"], ["a_junk"]], 3, 1.25, [0.5, 2.0]))
+        eq("layers of a loop", [(k["sec"], k["state"]) for k in lay("d", {})[0]["kids"][0]["kids"]], [("d", "find")])
+        eq("layers, eager", lay("c", {}, True)[0]["kids"][0]["parts"], [("part_p", 8, 0)])
+        eq("layers of what nothing makes", T.layers("f", lua.table_from({})), None)
         eq("carried", d(T.carried()), {"a_junk": 2, "part_p": 1, "wpn_pm": 1})
         # without Craft From Stashes, the pack alone; with it, the stashes in its range (MCM) too
         have = lua.table_from({"a_junk": 1})

@@ -68,6 +68,17 @@ MUTANTS = {
                    '    if false then\n        lines[#lines + 1] = { f("st_almanac_need_stashes", range), "dim" }'),
     "supply_caller": ("    if have == nil and _supply then\n", "    if _supply then\n"),
     "caption_counts": ('g.name, g.known, g.total, g.found)', 'g.name, g.total, g.known, g.found)'),
+    "tree_link": ('{ t("st_almanac_tree_open"), "body", a.sec, "tree" }', '{ t("st_almanac_tree_open"), "body", a.sec }'),
+    "tree_book_short": ('return n:match("(%S+%s+%S*%d%S*)%s*$") or n', "return n"),
+    "tree_unread": ("unread = unread or not almanac_trees.book_known(b)", "unread = false"),
+    "tree_zone": ("        if #order > 0 then\n            layers = layers + 1\n", "        if true then\n            layers = layers + 1\n"),
+    "tree_under_dim": ('            n.role = dim and "dim" or "link"\n', '            n.role = "link"\n'),
+    "tree_part_dim": ('role = spare and "dim" or role }', "role = role }"),
+    "tree_carried_parts": ('local spare = dim or n.state == "carried"', "local spare = dim"),
+    "tree_crafts": ("                    crafts = crafts + n.n - n.got\n", "                    crafts = crafts + n.n\n"),
+    "tree_find_more": ("local s = n.got > 0 and f(\"st_almanac_tree_find_more\", rest)", "local s = false"),
+    "tree_supply": ("    local supply = supply_for(have)\n    local C", "    local supply = carry(have)\n    local C"),
+    "held_role": ('got >= n and "good" or (got == 0 and "warn" or "heading")', 'got >= n and "good" or "warn"'),
 }
 
 WORLD = r"""
@@ -167,6 +178,21 @@ STR.st_almanac_not_found = "Not found"
 STR.st_almanac_learned_on = "Heard of %s: %s"
 STR.st_almanac_group_junk = "Junk"
 STR.st_almanac_tab_caption = "%s: %s of %s known, %s found"
+STR.st_almanac_tree_title = "%s: tree"
+STR.st_almanac_tree_sum = "%s crafts, %s layers, %s bottom, %s parts"
+STR.st_almanac_tree_nobook = "No book"
+STR.st_almanac_tree_crafts = "Crafts: %s"
+STR.st_almanac_tree_unread = "unread"
+STR.st_almanac_tree_zone = "Zone"
+STR.st_almanac_tree_zone_sub = "makes these"
+STR.st_almanac_tree_carried = "carried"
+STR.st_almanac_tree_carried_n = "carried %s"
+STR.st_almanac_tree_under = "not needed"
+STR.st_almanac_tree_find = "find one"
+STR.st_almanac_tree_find_n = "find %s"
+STR.st_almanac_tree_find_more = "find %s more"
+STR.st_almanac_tree_partial = "carried %s of %s"
+INI.book3 = { inv_name = "The Art of Fusion Vol. 3" }
 """
 
 
@@ -255,7 +281,7 @@ def main():
         eq("detectors", B["st_almanac_h_detectors"], [("Bear, Echo", "body", None)])
         eq("where", B["st_almanac_h_where"], [("Fields: lvl10, lvl9, lvl8, lvl7, lvl6, lvl5, lvl4, lvl3 and 2 more", "body", None)])
         # the recipe: its book (built in: no source), then a part a line, an artifact's a link
-        eq("made", B["st_almanac_h_made"], [("Book: built in", "body", None), ("Junk A x1", "body", "a_junk"), ("Paw x5", "dim", None)])
+        eq("made", B["st_almanac_h_made"], [("st_almanac_tree_open", "body", "b"), ("Book: built in", "body", None), ("Junk A x1", "body", "a_junk"), ("Paw x5", "dim", None)])
         eq("into", B["st_almanac_h_into"], [("Cee", "body", "c"), ('"Kay"', "body", "k")])
         eq("totals", B["st_almanac_h_totals"], [("1 crafts, 1 bottom, 5 parts", "body", None), ("Junk A x1", "body", "a_junk"),
                                                 ("Paw x5", "dim", None)])
@@ -291,7 +317,7 @@ def main():
         B = dict(e["blocks"])
         eq("where c", B["st_almanac_h_where"], [("DAO: lvl3, lvl2", "body", None), ("DAO anywhere", "body", None)])
         # an unread book: where it comes from, under it; and again with what you carry
-        eq("made c", B["st_almanac_h_made"], [("Book: Vol1 (unread)", "warn", None), ("Sold by Prof H, Prof S.", "dim", None),
+        eq("made c", B["st_almanac_h_made"], [("st_almanac_tree_open", "body", "c"), ("Book: Vol1 (unread)", "warn", None), ("Sold by Prof H, Prof S.", "dim", None),
                                               ("Bee x2", "body", "b")])
         eq("need c", B["st_almanac_h_need"][-2:], [("No melter. Sold by Prof H.", "warn", None),
                                                    ("unread: Vol1. Sold by Prof H, Prof S.", "warn", None)])
@@ -299,7 +325,7 @@ def main():
         e = entry("c", lua.table_from({"c": 1, "melter": 1}))
         eq("melter carried", [l for l in dict(e["blocks"])["st_almanac_h_need"] if l[0].startswith("No melter")], [])
         g.NOTES["encyclopedia__notes_book1"] = True
-        eq("book read", dict(entry("c", lua.table_from({"c": 1}))["blocks"])["st_almanac_h_made"], [("Book: Vol1", "body", None), ("Bee x2", "body", "b")])
+        eq("book read", dict(entry("c", lua.table_from({"c": 1}))["blocks"])["st_almanac_h_made"][1:], [("Book: Vol1", "body", None), ("Bee x2", "body", "b")])
         g.NOTES["encyclopedia__notes_book1"] = None
         # the page's own fill: what's known by what's carried, crafting with the stashes in range too
         P.set_have(lua.table_from({}), lua.table_from({"a_junk": 1, "part_p": 5, "melter": 1}), 10)
@@ -314,6 +340,49 @@ def main():
         B = dict(e["blocks"])
         eq("into a_junk", B["st_almanac_h_into"], [("Bee", "body", "b"), ("then Cee", "dim", "c"), ('then "Kay"', "dim", "k")])
         eq("no totals for what nothing makes", "st_almanac_h_totals" in B, False)
+
+        # the crafting tree's words: the link in the recipe block opens it
+        made = lst(lst(P.entry("c", lua.table_from({"c": 1})).blocks)[2].lines)[0]
+        eq("tree link", (made[1], made[3], made[4]), ("st_almanac_tree_open", "c", "tree"))
+        eq("tree book names", [P.tree_book(b) for b in ("book3", "book1", "recipe_basic_0")], ["Vol. 3", "Vol1", "No book"])
+
+        def tree(sec, have):
+            tr = P.tree(sec, have)
+            if tr is None:
+                return None
+            rows = [(r.label, r.label_role, r.sub, r.unread, [x.sec for x in lst(r.nodes)]) for r in lst(tr.rows)]
+            nodes = {}
+            for r in lst(tr.rows):
+                for x in lst(r.nodes):
+                    nodes.setdefault(x.sec, []).append((x.name, x.role, (x.status[1], x.status[2]) if x.status else None,
+                                                        [(ln.name, ln.count, ln.role) for ln in lst(x.lines)]))
+            return tr.title, tr.sum, tr.leaves, rows, nodes
+
+        title, total, leaves, rows, nodes = tree("c", none)
+        eq("tree head", (title, total, leaves), ("Cee: tree", "3 crafts, 2 layers, 2 bottom, 10 parts", 1))
+        # c's book unread: its row warns; b's recipe set is no item; the bottom row is the Zone's
+        eq("tree rows", rows, [("Vol1", "warn", "Crafts: 1", "unread", ["c"]), ("No book", "heading", "Crafts: 2", None, ["b"]),
+                               ("Zone", "heading", "makes these", None, ["a_junk"])])
+        eq("tree nodes, nothing held", nodes, {"c": [("Cee", "link", None, [])],
+                                               "b": [("Bee", "link", None, [("Paw", "0/10", "warn")])],
+                                               "a_junk": [("Junk A", "link", ("find 2", "warn"), [])]})
+        g.NOTES["encyclopedia__notes_book1"] = True
+        title, total, leaves, rows, nodes = tree("c", lua.table_from({"b": 1, "part_p": 2, "a_junk": 1}))
+        g.NOTES["encyclopedia__notes_book1"] = None
+        eq("tree rows, some held", [r[:4] for r in rows], [("Vol1", "heading", "Crafts: 1", None), ("No book", "heading", "Crafts: 1", None),
+                                                           ("Zone", "heading", "makes these", None)])
+        eq("tree nodes, some held", (nodes["b"], nodes["a_junk"]),
+           ([("Bee", "link", ("carried 1 of 2", "heading"), [("Paw", "2/5", "heading")])], [("Junk A", "link", ("carried", "good"), [])]))
+        title, total, leaves, rows, nodes = tree("c", lua.table_from({"b": 2, "part_p": 9}))
+        eq("tree under a carried one", (nodes["b"], nodes["a_junk"]),
+           ([("Bee", "link", ("carried 2", "good"), [("Paw", "0/10", "dim")])], [("Junk A", "dim", ("not needed", "dim"), [])]))
+        eq("tree finds more", tree("c", lua.table_from({"a_junk": 1}))[4]["a_junk"][0][2], ("find 1 more", "warn"))
+        eq("tree finds one", tree("b", none)[4]["a_junk"][0][2], ("find one", "warn"))
+        eq("no tree for what nothing makes", P.tree("a_junk", none), None)
+        # the page's own fill: the stashes in range count, as in the entry's last block
+        P.set_have(lua.table_from({}), lua.table_from({"part_p": 10}), 10)
+        eq("tree with the stashes", tree("c", None)[4]["b"][0][3], [("Paw", "10/10", "good")])
+        P.set_have(None, None, None)
     except Exception as ex:
         fails.append("the run crashed: %s" % str(ex).splitlines()[0])
     for f in fails:

@@ -270,4 +270,52 @@
 	<string id="ui_mcm_almanac_about">
 		<text>The Almanac opens three ways, your choice: its own PDA tab, Mod App Creator's tile, or the key above.</text>
 	</string>
+	<string id="st_almanac_tree_open">
+		<text>The crafting tree, layer by layer</text>
+	</string>
+	<string id="st_almanac_tree_title">
+		<text>%s: crafting tree</text>
+	</string>
+	<string id="st_almanac_tree_sum">
+		<text>%s crafts in %s layers. %s artifacts only the Zone makes, %s mutant parts.</text>
+	</string>
+	<string id="st_almanac_tree_back">
+		<text>&lt; Back</text>
+	</string>
+	<string id="st_almanac_tree_nobook">
+		<text>No book</text>
+	</string>
+	<string id="st_almanac_tree_crafts">
+		<text>Crafts: %s</text>
+	</string>
+	<string id="st_almanac_tree_unread">
+		<text>not read yet</text>
+	</string>
+	<string id="st_almanac_tree_zone">
+		<text>Only the Zone</text>
+	</string>
+	<string id="st_almanac_tree_zone_sub">
+		<text>makes these</text>
+	</string>
+	<string id="st_almanac_tree_carried">
+		<text>you carry it</text>
+	</string>
+	<string id="st_almanac_tree_carried_n">
+		<text>you carry %s</text>
+	</string>
+	<string id="st_almanac_tree_under">
+		<text>not needed</text>
+	</string>
+	<string id="st_almanac_tree_find">
+		<text>find one</text>
+	</string>
+	<string id="st_almanac_tree_find_n">
+		<text>find %s</text>
+	</string>
+	<string id="st_almanac_tree_find_more">
+		<text>find %s more</text>
+	</string>
+	<string id="st_almanac_tree_partial">
+		<text>you carry %s of %s</text>
+	</string>
 </string_table>

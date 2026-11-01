@@ -11,6 +11,7 @@ eagerness" achievement. Nothing here is saved or changed.
     almanac_trees.up(sec)              the artifacts it goes into, nearest first
     almanac_trees.totals(sec)          crafts, books, bottom artifacts and parts for one
     almanac_trees.need(sec, have)      the same, using what `have` holds first, and what's missing
+    almanac_trees.layers(sec, have)    that tree in layers, laid out for the page's tree view
     almanac_trees.carried()            the player's inventory as { section = count }
     almanac_trees.book_known(book)     whether the workshop would let the player use a book
 --]]
@@ -90,6 +91,15 @@ local function add(t, k, n)
     t[k] = (t[k] or 0) + n
 end
 
+-- a copy of what's held, to take from
+local function copy(have)
+    local t = {}
+    for k, v in pairs(have or {}) do
+        t[k] = v
+    end
+    return t
+end
+
 -- crafts, books, bottom artifacts and parts for one of an artifact; nil when nothing makes it
 function totals(sec, eager, C)
     C = C or cat()
@@ -151,10 +161,7 @@ function need(sec, have, eager, C)
     if not recipe_for(sec, C) then
         return nil
     end
-    local left = {}
-    for k, v in pairs(have or {}) do
-        left[k] = v
-    end
+    local left = copy(have)
     local t = { crafts = 0, books = {}, used = {}, missing = {}, missing_count = 0 }
     local function take(s, n)
         local got = math.min(left[s] or 0, n)
@@ -188,6 +195,79 @@ function need(sec, have, eager, C)
     want(sec, 1, {}, true)
     t.done = t.missing_count == 0
     return t
+end
+
+-- one more of an artifact as a tree in layers, for the page's tree view: what `have` holds used
+-- first, in need()'s own order, so the two agree on what's missing. A node: { sec, n, got, depth,
+-- book, recipe, kids = { artifact nodes }, parts = { { sec, n, got }, ... }, state, slot }. n is how
+-- many it takes and got how many of them `have` covers; state is "top" (the artifact itself),
+-- "carried" (covered, so nothing under it is needed), "under" (under a carried one: drawn, never
+-- taken from `have`), "craft" or "find" (nothing makes it, or a loop); slot is its center, in leaf
+-- widths from the left, a parent over its children. { root, rows = { { node, ... }, ... } (depth 0
+-- first), leaves }; nil when nothing makes it
+function layers(sec, have, eager, C)
+    C = C or cat()
+    if not recipe_for(sec, C) then
+        return nil
+    end
+    local left = copy(have)
+    local function take(s, n)
+        local got = math.min(left[s] or 0, n)
+        left[s] = (left[s] or 0) - got
+        return got
+    end
+    local rows = {}
+    local function walk(s, n, depth, path, under)
+        local node = { sec = s, n = n, got = 0, depth = depth, kids = {}, parts = {} }
+        rows[depth + 1] = rows[depth + 1] or {}
+        table.insert(rows[depth + 1], node)
+        if depth > 0 and not under then
+            node.got = take(s, n)
+        end
+        local r = not path[s] and recipe_for(s, C)
+        local rest = n - node.got
+        if under then
+            node.state = "under"
+        elseif depth == 0 then
+            node.state = "top"
+        elseif rest == 0 then
+            node.state = "carried"
+        else
+            node.state = r and "craft" or "find"
+        end
+        if r then
+            node.recipe, node.book = r.key, r.book
+            -- under a carried one, what it would take; else what the crafts still wanted take
+            local below = under or rest == 0
+            local m = below and n or rest
+            path[s] = true
+            for _, p in ipairs(r.parts) do
+                local k = amount(p[2], eager) * m
+                if C.artifacts[p[1]] then
+                    node.kids[#node.kids + 1] = walk(p[1], k, depth + 1, path, below)
+                else
+                    node.parts[#node.parts + 1] = { sec = p[1], n = k, got = below and 0 or take(p[1], k) }
+                end
+            end
+            path[s] = nil
+        end
+        return node
+    end
+    local root = walk(sec, 1, 0, {}, false)
+    local leaves = 0
+    local function place(node)
+        if #node.kids == 0 then
+            node.slot = leaves + 0.5
+            leaves = leaves + 1
+            return
+        end
+        for _, k in ipairs(node.kids) do
+            place(k)
+        end
+        node.slot = (node.kids[1].slot + node.kids[#node.kids].slot) / 2
+    end
+    place(root)
+    return { root = root, rows = rows, leaves = leaves }
 end
 
 -- the player's inventory as { section = count }

@@ -241,6 +241,14 @@ the census's, offline and in game, where all 102 trees take under a millisecond.
   two characters dropped, 6, 8 or 10 fields, amounts over 4 one less with the "artificer
   eagerness" achievement.
 - **Books not yet read,** and where each comes from.
+- **The tree view** (after 1.0.0, the user's sample of a layered chart, 2026-11-01): the recipe's
+  link opens the whole tree in the page's place, a row per layer. GAMMA's crafts each take one or
+  two artifacts and some mutant parts, and each layer is one book (Vol. 3, 2, 1, then the built-in
+  set), so the widest trees (Compass, Knot, Volat Emerald) are 4 artifacts across and 5 rows deep.
+  Each artifact has its icon, name (a link to its entry), a status and the parts its own craft takes,
+  counted against what the player holds, taken in `need`'s own order so the two always agree
+  (`almanac_trees.layers`); one already carried cuts its branch, which dims. Each row names its book,
+  its crafts and whether the book is read; the bottom row is what only the Zone makes.
 - **Later:** a plan handed to the workshop, as Workbench hands upgrades to the toolkit.
 
 ## 1.1: the survey
