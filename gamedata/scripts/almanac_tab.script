@@ -5,7 +5,7 @@ Mod App Creator's tile (z_almanac_mac; with MAC an MCM option picks the tile or 
 that opens it flat. Factions of the Zone's fotz_tab, for this page.
 --]]
 
-VERSION = "0.1.0"
+VERSION = "1.0.0"
 TAB_CAPTION = "st_almanac_tab"
 KEY_PATH = "almanac/tab_key"
 

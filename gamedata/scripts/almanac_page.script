@@ -13,7 +13,7 @@ the Zone makes it (a field, Dynamic Anomalies, a recipe); a known one is always 
                                      lines = { { text, role }, ... } }, ... } }
 --]]
 
-VERSION = "0.1.0"
+VERSION = "1.0.0"
 
 -- the page's tabs, in order: every artifact, then junk, then each tier as the game shows it, then
 -- the rest. A group's tier is the configs' (see shown_tier): tier 1 holds the configs' tier 2

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 — 2026-11-01
 
 - **The census** (`tools/census.py`): a read-only pass over an install's configs, as the game
   reads them, that lists every artifact with its card, tier, perk and detectors, the crafting
@@ -48,3 +48,5 @@
   come first.
 - **`tools/build.py`** checks the mod (scripts compile under LuaJIT 2.0, versions match, tests
   pass) and installs it into MO2.
+- **`tools/release.py`** packages a release zip, and `INSTALL-WITH-CLAUDE.md` lets an AI agent
+  install, update or remove the Almanac.

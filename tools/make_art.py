@@ -1,13 +1,13 @@
 """The Almanac's own art, drawn here so no texture pack can move it:
 
-- textures/ui/almanac_app.dds: the launcher tile for Mod App Creator, an artifact (a faceted
-  crystal in a ring) as flat art in the PDA's colors like the tiles beside it: light gray
+- textures/ui/almanac_app.dds: the launcher tile for Mod App Creator, an anomaly's swirl with a
+  faceted crystal in its eye, as flat art in the PDA's colors like the tiles beside it: light gray
   (enabled), amber (highlighted), white (touched), dim gray (disabled). A 512x512 four-state
   atlas: e top-left, h top-right, t bottom-left, d bottom-right
   (configs/ui/textures_descr/ui_almanac.xml).
 - textures/ui/almanac_px.dds: 4x4 white, tinted by the page for rules and panels.
 - textures/ui/almanac_marks.dds: the group tabs' marks, white outlined in black so the page can
-  tint them, 64x64 each, left to right: all (the tile's crystal in its ring), junk (a pitted stone:
+  tint them, 64x64 each, left to right: all (the crystal in a ring), junk (a pitted stone:
   junk carries no tier mark), tiers 1 to 4 as the game shows them (N chevrons for tier N, as GRIP
   marks an artifact's tier on its icon), other (a dashed ring); the last cell is left clear for the tabs' buttons, which
   only take the clicks (a 3t button keeps its texture at its XML size, so the page draws the tabs'
@@ -36,7 +36,8 @@ MARKS = ["all", "junk", "t1", "t2", "t3", "t4", "other"]
 
 
 def shape():
-    """The tile's mask, 256x256: a ring, and inside it a six-sided crystal with its facets cut."""
+    """The All tab's mask, 256x256: a ring, and inside it a six-sided crystal with its facets cut
+    (the first tile's art, which reads better than the swirl at a tab's size)."""
     n = 256 * SS
     m = Image.new("L", (n, n), 0)
     d = ImageDraw.Draw(m)
@@ -53,6 +54,35 @@ def shape():
     for a, b in (((128, 58), (128, 198)), ((80, 96), (176, 160)), ((176, 96), (80, 160))):
         c.line(s(*a, *b), fill=255, width=7 * SS)                        # its facets
     m = ImageChops.subtract(m, cuts)
+    return m.resize((256, 256), Image.LANCZOS)
+
+
+def tile_shape():
+    """The tile's mask, 256x256 (the user's pick from the 2026-11-01 slate): an anomaly's three
+    spiral arms, and in its clear eye the crystal with its facets cut."""
+    n = 256 * SS
+    m = Image.new("L", (n, n), 0)
+    d = ImageDraw.Draw(m)
+
+    def s(*v):
+        return [x * SS for x in v]
+
+    for arm in range(3):
+        pts = []
+        for i in range(60):
+            t = i / 59
+            a = math.radians(arm * 120 + t * 250)
+            r = 34 + t * 78
+            pts += [128 + r * math.cos(a), 128 + r * math.sin(a)]
+        d.line(s(*pts), fill=255, width=12 * SS, joint="curve")          # the arms
+    d.ellipse(s(86, 86, 170, 170), fill=0)                                # the eye
+    k = 0.42
+    crystal = [(128 + (x - 128) * k, 128 + (y - 128) * k)
+               for x, y in [(128, 58), (176, 96), (176, 160), (128, 198), (80, 160), (80, 96)]]
+    d.polygon(s(*[c for p in crystal for c in p]), fill=255)              # the crystal
+    for a, b in (((128, 58), (128, 198)), ((80, 96), (176, 160)), ((176, 96), (80, 160))):
+        d.line(s(128 + (a[0] - 128) * k, 128 + (a[1] - 128) * k, 128 + (b[0] - 128) * k, 128 + (b[1] - 128) * k),
+               fill=0, width=int(7 * k * SS))                             # its facets
     return m.resize((256, 256), Image.LANCZOS)
 
 
@@ -129,7 +159,7 @@ def write_dds(img, path):
 
 
 def main():
-    img = atlas(shape())
+    img = atlas(tile_shape())
     write_dds(img, os.path.join(UI, "almanac_app.dds"))
     write_dds(Image.new("RGBA", (4, 4), (255, 255, 255, 255)), os.path.join(UI, "almanac_px.dds"))
     mk = marks()
