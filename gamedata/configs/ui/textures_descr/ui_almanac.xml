@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<w>
+	<!-- the launcher tile in Mod App Creator (z_almanac_mac): this mod's own art, drawn by
+	     tools/make_art.py, four states in one 512x512 atlas -->
+	<file name="ui\almanac_app">
+		<texture id="almanac_app_e" x="0" y="0" width="256" height="256" />
+		<texture id="almanac_app_h" x="256" y="0" width="256" height="256" />
+		<texture id="almanac_app_t" x="0" y="256" width="256" height="256" />
+		<texture id="almanac_app_d" x="256" y="256" width="256" height="256" />
+	</file>
+	<!-- white, tinted where it's used: the page's rules and panels -->
+	<file name="ui\almanac_px">
+		<texture id="almanac_px" x="0" y="0" width="4" height="4" />
+	</file>
+</w>

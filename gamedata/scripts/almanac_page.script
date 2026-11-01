@@ -1,0 +1,393 @@
+--[[
+Artefact Almanac: what the page shows, as text, built from the catalog (almanac_data) and the
+trees (almanac_trees), so it can be tested away from the UI; ui_almanac.script only lays it out.
+Every word is a string id.
+
+What the player knows, for now: an artifact they carry, one whose PDA Guide article is open, or
+everything with MCM's jailbreak. An unknown artifact is listed as unknown, and only once some way of
+the Zone makes it (a field, Dynamic Anomalies, a recipe); a known one is always listed.
+
+    almanac_page.groups()            the left column: { { id, name, known, total }, ... }
+    almanac_page.rows(group)         the middle column: { { sec, name, known }, ... }
+    almanac_page.entry(sec, have)    the right column: { name, sec, known, blocks = { { heading,
+                                     lines = { { text, role }, ... } }, ... } }
+--]]
+
+VERSION = "0.1.0"
+
+-- the left column's groups, in order: every artifact, then junk, then each tier, then the rest
+GROUPS = {
+    { id = "all" },
+    { id = "junk", kind = "i_arty_junk" },
+    { id = "t2", tier = 2 }, { id = "t3", tier = 3 }, { id = "t4", tier = 4 }, { id = "t5", tier = 5 },
+    { id = "other" },
+}
+MAX_LEVELS = 8      -- levels a "where" line names before "and N more"
+
+local function t(id)
+    return game.translate_string(id)
+end
+
+local function f(id, ...)
+    return string.format(t(id), ...)
+end
+
+local function name_of(sec)
+    local n = ini_sys:r_string_ex(sec, "inv_name")
+    return n and t(n) or sec
+end
+
+-- MCM's jailbreak: everything known
+function jailbreak()
+    local ok, v = pcall(function() return ui_mcm and ui_mcm.get("almanac/jailbreak") end)
+    return ok and v == true
+end
+
+-- whether the player knows an artifact: the jailbreak, carrying one, or its Guide article open
+function known(sec, have)
+    if jailbreak() then
+        return true
+    end
+    if have and (have[sec] or 0) > 0 then
+        return true
+    end
+    local ok, open = pcall(function()
+        return ui_pda_encyclopedia_tab.is_unlocked_article("encyclopedia_artefacts_" .. sec)
+    end)
+    return ok and open == true
+end
+
+-- whether the Zone makes it some way the catalog sees: a field, Dynamic Anomalies, a recipe
+function turns_up(a)
+    return next(a.fields) ~= nil or next(a.dao) ~= nil or a.dao_random or #a.made_by > 0
+end
+
+-- whether a group holds an artifact
+function in_group(g, a)
+    if g.id == "all" then
+        return true
+    end
+    if g.kind then
+        return a.kind == g.kind
+    end
+    if g.tier then
+        return a.kind ~= "i_arty_junk" and a.tier == g.tier
+    end
+    -- the rest: artifacts with no tier, or one outside the groups above
+    if a.kind == "i_arty_junk" then
+        return false
+    end
+    return not (a.tier and a.tier >= 2 and a.tier <= 5)
+end
+
+local function listed(a, have)
+    return known(a.sec, have) or turns_up(a)
+end
+
+local _have
+-- what the player carries, read once per page fill (the UI passes it in)
+local function carry(have)
+    return have or _have or {}
+end
+
+function set_have(have)
+    _have = have
+end
+
+function groups(have)
+    have = carry(have)
+    local C = almanac_data.catalog()
+    local out = {}
+    for _, g in ipairs(GROUPS) do
+        local total, k = 0, 0
+        for _, sec in ipairs(C.order) do
+            local a = C.artifacts[sec]
+            if in_group(g, a) and listed(a, have) then
+                total = total + 1
+                if known(sec, have) then
+                    k = k + 1
+                end
+            end
+        end
+        if total > 0 or g.id == "all" then
+            out[#out + 1] = { id = g.id, name = t("st_almanac_group_" .. g.id), known = k, total = total }
+        end
+    end
+    return out
+end
+
+-- a name as the list sorts it: opening quotes and spaces left out (Artefact Hunter's artifacts are
+-- quoted: "Lung", and in Russian with the cp1251 guillemets, bytes 171 and 187), case ignored
+function sort_key(name)
+    return string.lower((name:gsub('^[%s"\'\171\187]+', "")))
+end
+
+-- a group's artifacts: the known by name, then the unknown
+function rows(group_id, have)
+    have = carry(have)
+    local C = almanac_data.catalog()
+    local g
+    for _, x in ipairs(GROUPS) do
+        if x.id == group_id then
+            g = x
+        end
+    end
+    local kn, unk = {}, {}
+    for _, sec in ipairs(C.order) do
+        local a = C.artifacts[sec]
+        if g and in_group(g, a) and listed(a, have) then
+            if known(sec, have) then
+                kn[#kn + 1] = { sec = sec, name = a.name, known = true }
+            else
+                unk[#unk + 1] = { sec = sec, name = t("st_almanac_unknown"), known = false }
+            end
+        end
+    end
+    table.sort(kn, function(x, y)
+        local a, b = sort_key(x.name), sort_key(y.name)
+        if a ~= b then
+            return a < b
+        end
+        return x.sec < y.sec
+    end)
+    for _, r in ipairs(unk) do
+        kn[#kn + 1] = r
+    end
+    return kn
+end
+
+-- names joined, at most MAX_LEVELS of them, then "and N more"
+function joined(names)
+    if #names <= MAX_LEVELS then
+        return table.concat(names, ", ")
+    end
+    local head = {}
+    for i = 1, MAX_LEVELS do
+        head[i] = names[i]
+    end
+    return f("st_almanac_and_more", table.concat(head, ", "), #names - MAX_LEVELS)
+end
+
+-- levels by a number each (higher first, then by name), as level names
+local function by_weight(weights)
+    local list = {}
+    for lvl, w in pairs(weights) do
+        list[#list + 1] = { lvl = lvl, w = w, name = t(lvl) }
+    end
+    table.sort(list, function(x, y)
+        if x.w ~= y.w then
+            return x.w > y.w
+        end
+        return x.name < y.name
+    end)
+    local names = {}
+    for i, x in ipairs(list) do
+        names[i] = x.name
+    end
+    return names
+end
+
+-- the kind and tier line
+function kind_line(a)
+    if a.kind == "i_arty_junk" then
+        return a.tier and f("st_almanac_kind_junk_tier", a.tier) or t("st_almanac_kind_junk")
+    end
+    return a.tier and f("st_almanac_kind_arty_tier", a.tier) or t("st_almanac_kind_arty")
+end
+
+local function detectors_block(C, a)
+    local names = {}
+    for _, d in ipairs(a.detectors) do
+        if not d:find("^mp_") then
+            names[#names + 1] = name_of(d)
+        end
+    end
+    table.sort(names)
+    -- one name per detector model: two sections can share one
+    local uniq, last = {}, nil
+    for _, n in ipairs(names) do
+        if n ~= last then
+            uniq[#uniq + 1] = n
+            last = n
+        end
+    end
+    local lines = { { #uniq > 0 and table.concat(uniq, ", ") or t("st_almanac_detectors_none"), #uniq > 0 and "body" or "dim" } }
+    return { heading = t("st_almanac_h_detectors"), lines = lines }
+end
+
+local function where_block(C, a)
+    local lines = {}
+    local fw = {}
+    for lvl, ps in pairs(a.fields) do
+        local best = 0
+        for _, p in ipairs(ps) do
+            best = math.max(best, p)
+        end
+        fw[lvl] = best
+    end
+    if next(fw) then
+        lines[#lines + 1] = { f("st_almanac_fields", joined(by_weight(fw))), "body" }
+    end
+    if next(a.dao) then
+        lines[#lines + 1] = { f("st_almanac_dao", joined(by_weight(a.dao))), "body" }
+    end
+    if a.dao_random then
+        lines[#lines + 1] = { t("st_almanac_dao_random"), "body" }
+    end
+    if #lines == 0 then
+        lines[#lines + 1] = { #a.made_by > 0 and t("st_almanac_where_craft_only") or t("st_almanac_where_none"), "dim" }
+    end
+    return { heading = t("st_almanac_h_where"), lines = lines }
+end
+
+local function parts_text(parts, eager)
+    local out = {}
+    for _, p in ipairs(parts) do
+        out[#out + 1] = f("st_almanac_part", name_of(p[1]), almanac_trees.amount(p[2], eager))
+    end
+    return table.concat(out, ", ")
+end
+
+local function book_text(book)
+    local n = ini_sys:section_exist(book) and name_of(book) or nil
+    if not n then
+        return t("st_almanac_book_builtin")
+    end
+    if not almanac_trees.book_known(book) then
+        return f("st_almanac_book_unread", n)
+    end
+    return n
+end
+
+-- each recipe that makes it, the one the trees take first; the others dimmed
+local function made_block(C, a, eager)
+    local by_key = {}
+    for _, r in ipairs(C.recipes) do
+        by_key[r.key] = r
+    end
+    local lines = {}
+    for i, key in ipairs(a.made_by) do
+        local r = by_key[key]
+        if r then
+            lines[#lines + 1] = { f("st_almanac_made_line", book_text(r.book), parts_text(r.parts, eager)),
+                                  i == 1 and "body" or "dim" }
+        end
+    end
+    if #lines == 0 then
+        lines[1] = { t("st_almanac_made_none"), "dim" }
+    end
+    return { heading = t("st_almanac_h_made"), lines = lines }
+end
+
+local function into_block(C, a)
+    local lines = {}
+    for _, u in ipairs(almanac_trees.up(a.sec, C)) do
+        local name = C.artifacts[u.sec].name
+        lines[#lines + 1] = { u.depth == 1 and name or f("st_almanac_into_later", name), u.depth == 1 and "body" or "dim" }
+    end
+    if #lines == 0 then
+        lines[1] = { t("st_almanac_into_none"), "dim" }
+    end
+    return { heading = t("st_almanac_h_into"), lines = lines }
+end
+
+-- counts as "name xN" lines, most first, then by name
+local function count_lines(counts, role)
+    local list = {}
+    for sec, n in pairs(counts) do
+        list[#list + 1] = { name = name_of(sec), n = n }
+    end
+    table.sort(list, function(x, y)
+        if x.n ~= y.n then
+            return x.n > y.n
+        end
+        return x.name < y.name
+    end)
+    local lines = {}
+    for _, x in ipairs(list) do
+        lines[#lines + 1] = { f("st_almanac_part", x.name, x.n), role }
+    end
+    return lines
+end
+
+local function totals_block(C, a, eager)
+    local tt = almanac_trees.totals(a.sec, eager, C)
+    if not tt then
+        return nil
+    end
+    local n_arts = 0
+    for _, n in pairs(tt.artifacts) do
+        n_arts = n_arts + n
+    end
+    local lines = { { f("st_almanac_totals", tt.crafts, n_arts, tt.part_count), "body" } }
+    for _, l in ipairs(count_lines(tt.artifacts, "body")) do
+        lines[#lines + 1] = l
+    end
+    for _, l in ipairs(count_lines(tt.parts, "dim")) do
+        lines[#lines + 1] = l
+    end
+    return { heading = t("st_almanac_h_totals"), lines = lines }
+end
+
+local function need_block(C, a, have, eager)
+    local nd = almanac_trees.need(a.sec, have, eager, C)
+    if not nd then
+        return nil
+    end
+    local lines = {}
+    if nd.done then
+        lines[1] = { f("st_almanac_need_done", nd.crafts), "good" }
+    else
+        lines[1] = { f("st_almanac_need_missing", nd.crafts, nd.missing_count), "body" }
+        for _, l in ipairs(count_lines(nd.missing, "warn")) do
+            lines[#lines + 1] = l
+        end
+    end
+    local unread = {}
+    for book in pairs(nd.books) do
+        if not almanac_trees.book_known(book) then
+            unread[#unread + 1] = name_of(book)
+        end
+    end
+    table.sort(unread)
+    if #unread > 0 then
+        lines[#lines + 1] = { f("st_almanac_need_books", table.concat(unread, ", ")), "warn" }
+    end
+    return { heading = t("st_almanac_h_need"), lines = lines }
+end
+
+-- the entry for an artifact, or for an unknown one only that it's unknown
+function entry(sec, have)
+    have = carry(have)
+    local C = almanac_data.catalog()
+    local a = C.artifacts[sec]
+    if not a then
+        return nil
+    end
+    if not known(sec, have) then
+        return { sec = sec, known = false, name = t("st_almanac_unknown"),
+                 blocks = { { lines = { { t("st_almanac_unknown_entry"), "dim" } } } } }
+    end
+    local eager = almanac_trees.eager_now()
+    local e = { sec = sec, known = true, name = a.name, kind = kind_line(a),
+                weight = a.weight and f("st_almanac_weight", string.format("%.2f", a.weight)) or nil,
+                description = t(ini_sys:r_string_ex(sec, "description") or ""), blocks = {} }
+    local function put(b)
+        if b then
+            e.blocks[#e.blocks + 1] = b
+        end
+    end
+    put(detectors_block(C, a))
+    put(where_block(C, a))
+    put(made_block(C, a, eager))
+    put(into_block(C, a))
+    put(totals_block(C, a, eager))
+    put(need_block(C, a, have, eager))
+    return e
+end
+
+-- the header's count: known of listed
+function counts(have)
+    local g = groups(have)[1]
+    return g.known, g.total
+end

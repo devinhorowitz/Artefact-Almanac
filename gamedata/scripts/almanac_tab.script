@@ -1,0 +1,157 @@
+--[[
+Artefact Almanac: how the page opens, three ways, the player's choice: a tab of its own in the PDA
+(Modded Exes' registry, pda_dynamic_tabs, registered a second into play, never during a load),
+Mod App Creator's tile (z_almanac_mac; with MAC an MCM option picks the tile or the tab), or a key
+that opens it flat. Factions of the Zone's fotz_tab, for this page.
+--]]
+
+VERSION = "0.1.0"
+TAB_CAPTION = "st_almanac_tab"
+KEY_PATH = "almanac/tab_key"
+
+local TAB    -- the tab's section id, once registered
+
+local function log(fmt, ...)
+    printf("[almanac-tab] " .. fmt, ...)
+end
+
+-- the page for the PDA, from its tab or MAC's tile; a page that fails to build is logged and
+-- comes up empty
+function page_ui()
+    local ok, ui = pcall(function() return ui_almanac.get_ui() end)
+    if ok then
+        return ui
+    end
+    log("! the page failed: %s", tostring(ui))
+    return nil
+end
+
+function supported()
+    return pda_dynamic_tabs ~= nil and type(pda_dynamic_tabs.register) == "function"
+end
+
+-- Without MAC the page has its tab; with MAC, the tile, unless MCM asks for the tab (the option
+-- exists only with MAC, so MAC is asked first: MCM logs a read of an option no page defines).
+function wants_tab()
+    if not supported() then
+        return false
+    end
+    return not z_almanac_mac.available() or (ui_mcm ~= nil and ui_mcm.get("almanac/pda_tab") == true)
+end
+
+-- the section the PDA shows, or nil while it can't be read
+local function pda_section()
+    local ok, s = pcall(function()
+        local m = ActorMenu.get_pda_menu()
+        return m and m:GetActiveSection()
+    end)
+    return ok and s or nil
+end
+
+-- The tab there or gone as wants_tab() says, and the tile the other way round; a tab the registry
+-- refuses leaves the tile. The registry rebuilds the tab bar and the engine may then select a
+-- registered tab's page: the section the PDA was on is put back, and if it was the tab taken away,
+-- the PDA goes to Tasks.
+function sync()
+    local want = wants_tab()
+    if want and not TAB then
+        local was = pda_section()
+        local ok, id = pcall(pda_dynamic_tabs.register, TAB_CAPTION, page_ui)
+        if ok and type(id) == "string" then
+            TAB = id
+            z_almanac_mac.remove_tile()
+        else
+            log("! no Almanac tab: %s", tostring(id))
+            z_almanac_mac.add_tile()
+        end
+        local m = ActorMenu.get_pda_menu()
+        if m and was and was ~= "" then
+            if was == modxml_almanac.SECTION and TAB then
+                m:SetActiveSubdialog(TAB)
+            elseif m:GetActiveSection() ~= was then
+                m:SetActiveSubdialog(was)
+            end
+        end
+    elseif not want then
+        local was, gone = pda_section(), TAB
+        if gone then
+            TAB = nil
+            local ok, err = pcall(pda_dynamic_tabs.unregister, gone)
+            if not ok then
+                log("! the tab could not be taken away: %s", tostring(err))
+            end
+        end
+        z_almanac_mac.add_tile()
+        local m = ActorMenu.get_pda_menu()
+        if m and gone then
+            if m:GetActiveSection() == gone or was == gone then
+                m:SetActiveSubdialog("eptTasks")
+            elseif was and was ~= "" and m:GetActiveSection() ~= was then
+                m:SetActiveSubdialog(was)
+            end
+        end
+    end
+end
+
+local function sync_soon(delay)
+    CreateTimeEvent("almanac_tab", "sync", delay, function()
+        local ok, err = pcall(sync)
+        if not ok then
+            log("! the tab: %s", tostring(err))
+        end
+        return true
+    end)
+end
+
+-- the section the page is on in the PDA: its tab's, or the tile's parked one
+function section()
+    return TAB or modxml_almanac.SECTION
+end
+
+-- whether the page in the PDA offers Back to MAC's launcher: while the page has its tile
+function back_to_launcher()
+    return z_almanac_mac.has_tile() == true
+end
+
+-- the flat window's key: its DIK code, or nil while unbound; read at each press
+function key()
+    local ok, k = pcall(function() return ui_mcm and ui_mcm.get(KEY_PATH) end)
+    k = ok and tonumber(k) or nil
+    return (k and k >= 0) and k or nil
+end
+
+-- The key opens the page a moment after the press: the engine hands a key to the scripts before
+-- the UI, so a window opened during the press would take that same press and close again. While
+-- the page is open flat, the press is the page's.
+local function on_key_press(dik)
+    local k = key()
+    if not (k and dik == k) or ui_almanac.flat_window() then
+        return
+    end
+    CreateTimeEvent("almanac_tab", "open_flat", 0, function()
+        if db.actor and db.actor:alive() then
+            local ok, err = pcall(ui_almanac.open_flat)
+            if not ok then
+                log("! could not open the page flat: %s", tostring(err))
+            end
+        end
+        return true
+    end)
+end
+
+-- a window Lua made, still shown when a load starts, crashes the game: the flat page closes when
+-- the level goes
+local function close_flat()
+    local ok, err = pcall(ui_almanac.close_flat)
+    if not ok then
+        log("! could not close the page: %s", tostring(err))
+    end
+end
+
+function on_game_start()
+    -- the tab or the tile in play only: a registration during a load crashed in Factions' testing
+    RegisterScriptCallback("actor_on_first_update", function() sync_soon(1) end)
+    RegisterScriptCallback("on_option_change", function() sync_soon(0) end)
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("actor_on_net_destroy", close_flat)
+end

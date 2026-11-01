@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="st_almanac_title">
+		<text>Artefact Almanac</text>
+	</string>
+	<string id="st_almanac_tab">
+		<text>Almanac</text>
+	</string>
+	<string id="st_almanac_back">
+		<text>Back</text>
+	</string>
+	<string id="st_almanac_known_count">
+		<text>Known: %s of %s</text>
+	</string>
+	<string id="st_almanac_credit">
+		<text>Artefact Almanac %s</text>
+	</string>
+	<string id="st_almanac_jailbreak_on">
+		<text>Everything shown (MCM)</text>
+	</string>
+
+	<string id="st_almanac_group_all">
+		<text>All</text>
+	</string>
+	<string id="st_almanac_group_junk">
+		<text>Junk</text>
+	</string>
+	<string id="st_almanac_group_t2">
+		<text>Tier 2</text>
+	</string>
+	<string id="st_almanac_group_t3">
+		<text>Tier 3</text>
+	</string>
+	<string id="st_almanac_group_t4">
+		<text>Tier 4</text>
+	</string>
+	<string id="st_almanac_group_t5">
+		<text>Tier 5</text>
+	</string>
+	<string id="st_almanac_group_other">
+		<text>Others</text>
+	</string>
+
+	<string id="st_almanac_unknown">
+		<text>Unknown artifact</text>
+	</string>
+	<string id="st_almanac_unknown_entry">
+		<text>You haven't come across this one yet. Hold one, or read about it in the PDA's Guide, and it opens here.</text>
+	</string>
+	<string id="st_almanac_kind_junk">
+		<text>Junk artifact</text>
+	</string>
+	<string id="st_almanac_kind_junk_tier">
+		<text>Junk artifact, tier %s</text>
+	</string>
+	<string id="st_almanac_kind_arty">
+		<text>Artifact</text>
+	</string>
+	<string id="st_almanac_kind_arty_tier">
+		<text>Artifact, tier %s</text>
+	</string>
+	<string id="st_almanac_weight">
+		<text>Weight: %s kg</text>
+	</string>
+	<string id="st_almanac_and_more">
+		<text>%s and %s more</text>
+	</string>
+
+	<string id="st_almanac_h_detectors">
+		<text>Detectors that show it</text>
+	</string>
+	<string id="st_almanac_detectors_none">
+		<text>No detector shows it.</text>
+	</string>
+	<string id="st_almanac_h_where">
+		<text>Where the Zone makes it</text>
+	</string>
+	<string id="st_almanac_fields">
+		<text>Anomaly fields: %s</text>
+	</string>
+	<string id="st_almanac_dao">
+		<text>Shifting anomalies: %s</text>
+	</string>
+	<string id="st_almanac_dao_random">
+		<text>Now and then, any shifting anomaly.</text>
+	</string>
+	<string id="st_almanac_where_craft_only">
+		<text>Only made at the Artefact Melter.</text>
+	</string>
+	<string id="st_almanac_where_none">
+		<text>Neither the fields nor the anomalies make it.</text>
+	</string>
+
+	<string id="st_almanac_h_made">
+		<text>Made at the Artefact Melter</text>
+	</string>
+	<string id="st_almanac_made_line">
+		<text>%s: %s</text>
+	</string>
+	<string id="st_almanac_made_none">
+		<text>No recipe makes it.</text>
+	</string>
+	<string id="st_almanac_part">
+		<text>%s x%s</text>
+	</string>
+	<string id="st_almanac_book_builtin">
+		<text>Known from the start</text>
+	</string>
+	<string id="st_almanac_book_unread">
+		<text>%s (not read yet)</text>
+	</string>
+	<string id="st_almanac_h_into">
+		<text>Goes into</text>
+	</string>
+	<string id="st_almanac_into_later">
+		<text>then %s</text>
+	</string>
+	<string id="st_almanac_into_none">
+		<text>Nothing is made from it.</text>
+	</string>
+
+	<string id="st_almanac_h_totals">
+		<text>From scratch</text>
+	</string>
+	<string id="st_almanac_totals">
+		<text>%s crafts, %s artifacts nothing makes, %s mutant parts:</text>
+	</string>
+	<string id="st_almanac_h_need">
+		<text>With what you carry</text>
+	</string>
+	<string id="st_almanac_need_done">
+		<text>You have everything: %s crafts.</text>
+	</string>
+	<string id="st_almanac_need_missing">
+		<text>%s crafts; still missing %s:</text>
+	</string>
+	<string id="st_almanac_need_books">
+		<text>Not read yet: %s</text>
+	</string>
+
+	<string id="ui_mcm_menu_almanac">
+		<text>Artefact Almanac</text>
+	</string>
+	<string id="ui_mcm_almanac_jailbreak">
+		<text>Show everything</text>
+	</string>
+	<string id="ui_mcm_almanac_jailbreak_desc">
+		<text>Every artifact opens in the Almanac at once, known or not. Off, an artifact opens once you hold one or read about it in the PDA's Guide.</text>
+	</string>
+	<string id="ui_mcm_almanac_pda_tab">
+		<text>Its own PDA tab</text>
+	</string>
+	<string id="ui_mcm_almanac_pda_tab_desc">
+		<text>Open the Almanac from a tab of its own in the PDA rather than from Mod App Creator's launcher.</text>
+	</string>
+	<string id="ui_mcm_almanac_tab_key">
+		<text>Key that opens the Almanac</text>
+	</string>
+	<string id="ui_mcm_almanac_tab_key_desc">
+		<text>Opens the Almanac flat, in a window of its own, as sharp as the inventory. Unbound by default.</text>
+	</string>
+	<string id="ui_mcm_almanac_about">
+		<text>The Almanac opens three ways, your choice: its own PDA tab, Mod App Creator's tile, or the key above.</text>
+	</string>
+</string_table>

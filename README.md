@@ -14,6 +14,14 @@ sibling to [Seasons of the Zone](https://github.com/devinhorowitz/seasonsofthezo
 
 Early development. The plan is in [docs/DESIGN.md](docs/DESIGN.md).
 
+**The page.** The Almanac in your PDA, laid out like the Guide: artifacts grouped by tier, and for
+each one the inventory's own stat card, the detectors that show it, where the Zone makes it (anomaly
+fields and shifting anomalies, by level), its recipe at the Artefact Melter and the book it needs,
+what it goes into, how much it takes from scratch, and how much you still lack with what you carry.
+It opens three ways, your choice: Mod App Creator's tile, its own PDA tab, or a key (MCM) that opens
+it flat and sharp. Artifacts you haven't held or read about in the Guide stay unknown; MCM's "Show
+everything" opens them all.
+
 **The in-game census** (`gamedata/scripts/almanac_census.script`, the only thing the mod holds so
 far). Once after each load, and once after each emission and psi storm, it counts every artifact the
 game holds, level by level: the ones lying free, by kind, with who spawned them (a field or Dynamic
@@ -29,7 +37,7 @@ appdata folder (`<Anomaly>\appdata`), with a summary line in the game's log:
 **The catalog** (`gamedata/scripts/almanac_data.script`), what the Almanac's pages will read:
 built once per load from the running game's configs, it holds every artifact with its containers,
 tier and detectors, the workshop's recipes, each level's anomaly fields and the chance a field's pick
-names each artifact, and Dynamic Anomalies' lists. Nothing shows it yet.
+names each artifact, and Dynamic Anomalies' lists.
 
 **The crafting trees** (`gamedata/scripts/almanac_trees.script`), on the catalog: an artifact's tree
 down to the artifacts nothing makes and the mutant parts, what it goes into, how much one takes in
@@ -60,6 +68,7 @@ python -I tools/test_census.py
 python -I tools/test_ingame_census.py
 python -I tools/test_catalog.py
 python -I tools/test_trees.py
+python -I tools/test_page.py
 python -I tools/mutants.py
 ```
 

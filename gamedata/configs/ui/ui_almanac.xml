@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<!--
+    The Artefact Almanac's page in the PDA, laid out like the PDA's own Guide and Arsenal's
+    catalog: groups, artifacts, and the entry, side by side, in the free content box every PDA
+    page uses, (28,106)-(792,709) of the 1024x768 PDA frame. Colors: heading 238,196,112;
+    body 200,200,200; dim 140,140,140 (almanac_page roles, ui_almanac's ROLES).
+-->
+<w>
+	<!-- the flat window (the MCM key): the 2D PDA's frame and caption, where pda_16.xml puts them
+	     relative to the PDA's pages -->
+	<flat_bezel x="-10" y="-34" width="819" height="768" stretch="1">
+		<texture>ui_inGame2_pda_texture</texture>
+	</flat_bezel>
+	<flat_caption x="29" y="28" width="748" height="17">
+		<text font="letterica16" align="l" r="170" g="170" b="170">st_almanac_title</text>
+	</flat_caption>
+
+	<!-- header: how many are known, and Back to Mod App Creator's launcher while the page has
+	     its tile -->
+	<known_count x="32" y="110" width="400" height="20">
+		<text font="letterica16" r="200" g="200" b="200" align="l" vert_align="c"/>
+	</known_count>
+	<btn_back x="672" y="107" width="120" height="26" stretch="1" check_mode="0">
+		<texture>ui_button_ordinary</texture>
+		<text font="letterica16" align="c" vert_align="c">st_almanac_back</text>
+	</btn_back>
+	<rule_top x="28" y="139" width="764" height="1" stretch="1">
+		<texture r="90" g="90" b="90">almanac_px</texture>
+	</rule_top>
+
+	<!-- columns: the groups, the artifacts of one, the entry -->
+	<group_list x="28" y="146" width="120" height="532" item_height="22" can_select="1" always_show_scroll="0">
+		<font font="letterica16" r="200" g="200" b="200"/>
+	</group_list>
+	<rule_group x="152" y="146" width="1" height="532" stretch="1">
+		<texture r="90" g="90" b="90">almanac_px</texture>
+	</rule_group>
+	<art_list x="158" y="146" width="232" height="532" item_height="22" can_select="1" always_show_scroll="0">
+		<font font="letterica16" r="200" g="200" b="200"/>
+	</art_list>
+	<rule_art x="394" y="146" width="1" height="532" stretch="1">
+		<texture r="90" g="90" b="90">almanac_px</texture>
+	</rule_art>
+	<detail x="402" y="146" width="390" height="532" always_show_scroll="0" stretch="1"/>
+
+	<!-- list rows: 22 high, as the Guide's -->
+	<group_name x="4" y="0" width="80" height="22">
+		<text font="letterica16" r="200" g="200" b="200" align="l" vert_align="c"/>
+	</group_name>
+	<group_count x="0" y="0" width="114" height="22">
+		<text font="letterica16" r="140" g="140" b="140" align="r" vert_align="c"/>
+	</group_count>
+	<art_name x="4" y="0" width="222" height="22">
+		<text font="letterica16" r="200" g="200" b="200" align="l" vert_align="c"/>
+	</art_name>
+
+	<!-- the entry, built per artifact inside the detail scroll view; 374 wide leaves room for its bar -->
+	<entry x="0" y="0" width="374" height="560" stretch="1"/>
+	<!-- a panel a little lighter than the PDA behind the icon, like the inventory's grid -->
+	<entry_icon_bg x="0" y="2" width="374" height="96" stretch="1">
+		<texture r="160" g="160" b="160" a="90">almanac_px</texture>
+	</entry_icon_bg>
+	<entry_icon_frame x="8" y="8" width="358" height="84" stretch="1"/>
+	<entry_icon x="0" y="0" width="10" height="10" stretch="1"/>
+	<entry_name x="0" y="104" width="374" height="20">
+		<text font="letterica18" r="238" g="196" b="112" align="l" vert_align="t" complex_mode="1"/>
+	</entry_name>
+	<entry_rule x="0" y="0" width="374" height="1" stretch="1">
+		<texture r="90" g="90" b="90">almanac_px</texture>
+	</entry_rule>
+	<entry_heading x="0" y="0" width="374" height="20">
+		<text font="letterica18" r="238" g="196" b="112" align="l" vert_align="c"/>
+	</entry_heading>
+	<entry_line x="0" y="0" width="374" height="18">
+		<text font="letterica16" r="200" g="200" b="200" align="l" vert_align="t" complex_mode="1"/>
+	</entry_line>
+
+	<!-- footer: the jailbreak line while MCM shows everything, and the app and its version -->
+	<rule_foot x="28" y="681" width="764" height="1" stretch="1">
+		<texture r="90" g="90" b="90">almanac_px</texture>
+	</rule_foot>
+	<jailbreak_lbl x="32" y="686" width="300" height="20">
+		<text font="letterica16" r="238" g="155" b="23" align="l" vert_align="c">st_almanac_jailbreak_on</text>
+	</jailbreak_lbl>
+	<credit x="460" y="686" width="328" height="20">
+		<text font="letterica16" r="140" g="140" b="140" align="r" vert_align="c"/>
+	</credit>
+</w>

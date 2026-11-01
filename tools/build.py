@@ -17,6 +17,7 @@ import re
 import shutil
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -26,7 +27,7 @@ ROOT = os.path.dirname(HERE)
 GD = os.path.join(ROOT, "gamedata")
 NAME = "Artefact Almanac"
 VERSION = "0.1.0"
-TESTS = ["test_census.py", "test_ingame_census.py", "test_catalog.py", "test_trees.py"]
+TESTS = ["test_census.py", "test_ingame_census.py", "test_catalog.py", "test_trees.py", "test_page.py"]
 GAMMA = os.environ.get("ALMANAC_GAMMA", r"D:\GAMMA")
 LOCK = os.environ.get("ALMANAC_LOCK", os.path.join(GAMMA, "_baseline", "state", "game-lock.txt"))
 
@@ -66,6 +67,38 @@ def check():
     print("scripts compile: %d, version %s" % (n_lua, VERSION))
     if n_lua == 0:
         bad.append("no scripts under " + GD)
+    # every XML parses (string tables as windows-1251); a UI file's first element is <w>, since the
+    # engine's UI parser gives up on anything before it and every widget is then nil
+    defined, n_xml = set(), 0
+    for root, _, files in os.walk(GD):
+        for f in files:
+            if not f.endswith(".xml"):
+                continue
+            p = os.path.join(root, f)
+            text = open(p, "rb").read().decode("cp1251")
+            body = text.split("?>", 1)[1] if text.startswith("<?xml") else text
+            try:
+                tree = ET.fromstring(body)
+                n_xml += 1
+            except ET.ParseError as e:
+                bad.append("%s: %s" % (p, e))
+                continue
+            if os.path.basename(root) == "ui" and tree.tag != "w":
+                bad.append("%s: the root element is <%s>, not <w>" % (p, tree.tag))
+            if "\\text\\" in p or "/text/" in p:
+                defined |= {s.get("id") for s in tree.iter("string")}
+    # every string id the scripts and UI files name is in the string table
+    used = set()
+    for root, _, files in os.walk(GD):
+        for f in files:
+            if f.endswith((".script", ".xml")) and "\\text\\" not in os.path.join(root, f):
+                used |= set(re.findall(r"\b((?:st|ui_mcm)_almanac_[a-z0-9_]+)", open(os.path.join(root, f), encoding="latin-1").read()))
+    for sid in sorted(used - defined):
+        # MCM builds an option's ids itself (ui_mcm_almanac_<id>, _desc); prefixes used to build
+        # ids in code end in "_"
+        if not sid.endswith("_"):
+            bad.append("string id %s is used but not defined" % sid)
+    print("xml parse: %d, string ids used: %d, defined: %d" % (n_xml, len(used), len(defined)))
     for t in TESTS:
         r = subprocess.run([sys.executable, "-I", os.path.join(HERE, t)], capture_output=True, text=True)
         last = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else r.stderr.strip()[-200:]
