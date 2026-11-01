@@ -11,5 +11,9 @@
 - **The in-game census** (`almanac_census.script`): after each load and each emission or psi storm,
   one line in `almanac_census.jsonl` counting the artifacts lying free and owned on every level,
   who spawned the free ones and how old they are, and the levels due a roll. Read-only.
+- **The catalog** (`almanac_data.script`): built once per load from the running game's configs:
+  artifacts with containers, tiers and detectors, the workshop's recipes, each level's fields from
+  the anomaly zones' own spawn settings, and Dynamic Anomalies' lists. `tools/catalog_lua.py` runs it
+  over an install's configs and compares it with the offline census, answer for answer.
 - **`tools/build.py`** checks the mod (scripts compile under LuaJIT 2.0, versions match, tests
   pass) and installs it into MO2.

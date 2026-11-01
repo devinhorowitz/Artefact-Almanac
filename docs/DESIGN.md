@@ -13,8 +13,9 @@ craft higher tier artefact, along with some sort of "detector" or survery functi
 reputation, so you get a hint or some sort of short term notice that an artefact you want couple
 be in a particular region without making it easy."
 
-This is a plan, not a manual. What exists today is two read-only censuses: one of an install's
-configs (`tools/census.py`) and one of the running game's artifacts (`almanac_census.script`).
+This is a plan, not a manual. What exists today is two read-only censuses, one of an install's
+configs (`tools/census.py`) and one of the running game's artifacts (`almanac_census.script`), and
+the start of the in-game catalog (`almanac_data.script`).
 
 ## Decisions (2026-11-01)
 
@@ -58,9 +59,10 @@ install on 2026-11-01. Facts marked *inference* weren't checked in game.
   junk. No field yields tier 5.
 - **Dynamic Anomalies** (`drx_da_main_artefacts.script`, run under LuaJIT 2.0 over these configs):
   33 levels with a list (60 artifacts across them), and a random pick, 25% of the time by
-  default, from 64 artifacts. Atom and Fountain are on no list and come from that pick or from
-  stashes; New Tasks' Lost Soul and Prometheus come only from that pick (*inference*: their own
-  quests may place them too).
+  default, from 64 artifacts as its script builds the list. Atom and Fountain are on no list and
+  come from that pick or from stashes. New Tasks takes its Lost Soul and Prometheus out of the pick
+  at load (`z_nta_compatibility.script`), so in game they come only from its quests; the offline
+  census can't see that edit, the in-game catalog does.
 - **Crafting** (`craft.ltx` section 7, read as the workshop reads it): 36 recipes make an
   artifact, all at the Artefact Melter: 10 known from the start, 13 from Vol. 1, 9 from Vol. 2, 4
   from Vol. 3. Three more (gauss rounds) take one. Expanded to the bottom, the Compass is 11
@@ -118,6 +120,18 @@ source read) found:
   The Almanac must sit beside them, not replace them.
 
 ## 1.0: the almanac
+
+**The catalog** (`almanac_data.script`) is built once per load, on first use, from the running
+game's configs: every artifact with its containers, tier and detectors, the workshop's recipes, each
+level's fields with the chance a pick names each artifact, and Dynamic Anomalies' lists. Its fields
+come from the anomaly zones' own spawn settings (`[anomal_zone] cfg`), since the engine's config
+file list leaves out `configs\scripts`; that also counts only fields the Zone actually spawns. Run
+offline over this install's configs, it gives the census's answers to the last comparison (1,026
+of them). Built in game on 2026-11-01 (483 ms, once per load on first use) it matched the census
+on names, tiers, containers, detectors and recipes, and corrected it on fields: 119 configs in use,
+not 120; some `pripyat` configs sit on SoC Pripyat rather than CoP Pripyat, and no zone uses Pole's
+two. The in-game catalog is the Almanac's truth; the offline census reads fields by folder and
+can't see other scripts' edits at load.
 
 **One entry per artifact** of kind `i_arty` or `i_arty_junk`, with its containers folded in. An
 artifact that never turns up short of console commands stays out of the counts, and the source
