@@ -88,6 +88,9 @@
 	<string id="st_almanac_group_other">
 		<text>Others</text>
 	</string>
+	<string id="st_almanac_tab_caption">
+		<text>%s: %s of %s known</text>
+	</string>
 
 	<string id="st_almanac_unknown">
 		<text>Unknown artifact</text>

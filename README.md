@@ -14,9 +14,10 @@ sibling to [Seasons of the Zone](https://github.com/devinhorowitz/seasonsofthezo
 
 Early development. The plan is in [docs/DESIGN.md](docs/DESIGN.md).
 
-**The page.** The Almanac in your PDA, laid out like the Guide: artifacts grouped by tier, and for
-each one the inventory's own stat card, the detectors that show it, where the Zone makes it (anomaly
-fields and shifting anomalies, by level), its recipe at the Artefact Melter and the book it needs,
+**The page.** The Almanac in your PDA: tabs across the top for all, junk and each tier, marked with
+the chevrons your inventory puts on an artifact of that tier, and for each artifact the inventory's
+own stat card, the detectors that show it, where the Zone makes it (anomaly fields and shifting
+anomalies, by level), its recipe at the Artefact Melter and the book it needs,
 what it goes into, how much it takes from scratch, and how much you still lack with what you carry.
 It opens three ways, your choice: Mod App Creator's tile, its own PDA tab, or a key (MCM) that opens
 it flat and sharp. Artifacts you haven't held or read about in the Guide stay unknown; MCM's "Show

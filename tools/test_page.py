@@ -49,6 +49,7 @@ MUTANTS = {
     "heard_line": ("    elseif heard then\n", "    elseif false then\n"),
     "found_count": ("        if found(sec) then\n            n = n + 1\n", "        if true then\n            n = n + 1\n"),
     "group_hidden": ('        if total > 0 or g.id == "all" then\n', "        if true then\n"),
+    "caption_counts": ('f("st_almanac_tab_caption", g.name, g.known, g.total)', 'f("st_almanac_tab_caption", g.name, g.total, g.known)'),
 }
 
 WORLD = r"""
@@ -124,6 +125,8 @@ almanac_found = {
 STR.st_almanac_found_on = "Found %s: %s"
 STR.st_almanac_not_found = "Not found"
 STR.st_almanac_learned_on = "Heard of %s: %s"
+STR.st_almanac_group_junk = "Junk"
+STR.st_almanac_tab_caption = "%s: %s of %s known"
 """
 
 
@@ -187,6 +190,7 @@ def main():
         eq("groups, b carried", groups(carry_b), [("all", 2, 6), ("junk", 1, 2), ("t2", 1, 1), ("t3", 0, 1), ("t4", 0, 1), ("other", 0, 1)])
         eq("rows, b carried", [(r[0], r[2]) for r in rows("all", carry_b)], [("b", True), ("a_junk", True), ("c", False), ("j2", False), ("k", False), ("w", False)])
         eq("rows t2 and other", (rows("t2", carry_b)[0][0], [r[0] for r in rows("other", carry_b)]), ("b", ["w"]))
+        eq("caption", P.caption(lst(P.groups(carry_b))[1]), "Junk: 1 of 2 known")
         g.MCM["almanac/jailbreak"] = True
         eq("groups, jailbreak", groups(none), [("all", 8, 8), ("junk", 2, 2), ("t2", 1, 1), ("t3", 1, 1), ("t4", 2, 2), ("other", 2, 2)])
         eq("sorted without quotes", [r[1] for r in rows("all", none)],

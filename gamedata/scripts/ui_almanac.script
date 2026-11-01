@@ -1,6 +1,7 @@
 --[[
-Artefact Almanac: the page in the PDA, laid out like the PDA's Guide: the groups, the artifacts of
-one, and the entry of one. almanac_page builds every word; this only lays it out.
+Artefact Almanac: the page in the PDA: the groups as tabs across the top, each a mark and a count,
+then the artifacts of one beside the entry of one. almanac_page builds every word; this only lays
+it out.
 
 The entry is built anew for each artifact and added to its scroll view only once complete: a scroll
 view measures its content when a window is added, never when one is resized. The stat card is the
@@ -17,6 +18,14 @@ local SINGLETON, FLAT
 local PDA_X, PDA_Y = 112, 34
 local GAP = 6
 local ROW_H = 22        -- a list row, as the Guide's (ui_almanac.xml item_height)
+local TAB_GAP = 4       -- between two tabs
+local MARK_GAP = 6      -- between a tab's mark and its count
+local TAB_LIGHT = { off = 14, over = 34 }   -- a tab panel's white, by alpha: as it is, under the cursor
+-- each group's mark (almanac_marks.dds, drawn by tools/make_art.py)
+local MARKS = {
+    all = "almanac_mark_all", junk = "almanac_mark_junk", t2 = "almanac_mark_t2", t3 = "almanac_mark_t3",
+    t4 = "almanac_mark_t4", t5 = "almanac_mark_t5", other = "almanac_mark_other",
+}
 local ROLES = {
     heading = { 238, 196, 112 }, body = { 200, 200, 200 }, dim = { 140, 140, 140 },
     good = { 56, 209, 115 }, warn = { 238, 155, 23 },
@@ -34,18 +43,14 @@ end
 -- where the player was, kept while the game runs: the group and the artifact
 local view = { group = "all", sec = nil }
 
--- a list's row: a name, and on the left column a count beside it
+-- a list's row: an artifact's name
 class "AlmanacRow" (CUIListBoxItem)
 
-function AlmanacRow:__init(xml, key, name_node, text, role, count) super(ROW_H)
+function AlmanacRow:__init(xml, key, name_node, text, role) super(ROW_H)
     self.key = key
     self.name = xml:InitTextWnd(name_node, self)
     self.name:SetText(text)
     self.name:SetTextColor(argb(role))
-    if count then
-        self.count = xml:InitTextWnd("group_count", self)
-        self.count:SetText(count)
-    end
 end
 
 class "AlmanacPage" (CUIScriptWnd)
@@ -66,10 +71,24 @@ function AlmanacPage:__init(flat) super()
     self:Register(self.btn_back, "btn_back")
     self:AddCallback("btn_back", ui_events.BUTTON_CLICKED, self.OnBack, self)
     xml:InitStatic("rule_top", self)
-    self.group_list = xml:InitListBox("group_list", self)
-    self:Register(self.group_list, "group_list")
-    self:AddCallback("group_list", ui_events.LIST_ITEM_SELECT, self.OnGroup, self)
-    xml:InitStatic("rule_group", self)
+    -- the group tabs: a slot for every group there could be, placed and filled by FillTabs; their
+    -- panels, then the chosen one's light and underline, then the buttons with marks and counts
+    local row = xml:InitStatic("tab_row", self)
+    self.tab_x, self.tab_y, self.tab_w = row:GetWndPos().x, row:GetWndPos().y, row:GetWidth()
+    self.tabs = {}
+    for i = 1, #almanac_page.GROUPS do
+        self.tabs[i] = { bg = xml:InitStatic("tab_bg", self) }
+    end
+    self.tab_on = xml:InitStatic("tab_on", self)
+    self.tab_line = xml:InitStatic("tab_line", self)
+    for i, slot in ipairs(self.tabs) do
+        local btn = xml:Init3tButton("tab", self)
+        self:Register(btn, "tab_" .. i)
+        self:AddCallback("tab_" .. i, ui_events.BUTTON_CLICKED, function() self:OnTab(i) end, self)
+        slot.btn, slot.mark, slot.count = btn, xml:InitStatic("tab_mark", btn), xml:InitTextWnd("tab_count", btn)
+    end
+    xml:InitStatic("rule_tabs", self)
+    self.list_caption = xml:InitTextWnd("list_caption", self)
     self.art_list = xml:InitListBox("art_list", self)
     self:Register(self.art_list, "art_list")
     self:AddCallback("art_list", ui_events.LIST_ITEM_SELECT, self.OnArtifact, self)
@@ -97,21 +116,59 @@ function AlmanacPage:Fill()
     self.jailbreak_lbl:Show(almanac_page.jailbreak())
     -- Back to Mod App Creator's launcher, in the PDA while the page has its tile
     self.btn_back:Show(not self.flat and almanac_tab.back_to_launcher())
-    self.group_list:RemoveAll()
-    local keep, first
-    for i, g in ipairs(almanac_page.groups()) do
-        local row = AlmanacRow(self.xml, g.id, "group_name", g.name, "body", string.format("%d/%d", g.known, g.total))
-        self.group_list:AddExistingItem(row)
-        if g.id == view.group then
-            keep = i - 1
-        end
-        first = first or i - 1
+    self.groups = almanac_page.groups()
+    local keep
+    for _, g in ipairs(self.groups) do
+        keep = keep or g.id == view.group
     end
-    self.group_list:SetSelectedIndex(keep or first or 0)
     if not keep then
         view.group = "all"
     end
+    self:FillTabs()
     self:FillArtifacts()
+end
+
+-- the tabs share the row, one per group shown; each a mark and "known/total" centered, tinted
+-- dim while none of its artifacts is known, the chosen one lit, underlined and amber
+function AlmanacPage:FillTabs()
+    local n = #self.groups
+    local w = (self.tab_w - TAB_GAP * (n - 1)) / n
+    local wide = utils_xml.is_widescreen() and 0.8 or 1
+    for i, slot in ipairs(self.tabs) do
+        local g = self.groups[i]
+        slot.btn:Show(g ~= nil)
+        slot.bg:Show(g ~= nil)
+        if g then
+            local x = self.tab_x + (i - 1) * (w + TAB_GAP)
+            local on = g.id == view.group
+            local role = on and "heading" or (g.known > 0 and "body" or "dim")
+            slot.btn:SetWndPos(vector2():set(x, self.tab_y))
+            slot.btn:SetWndSize(vector2():set(w, slot.btn:GetHeight()))
+            slot.bg:SetWndPos(vector2():set(x, self.tab_y))
+            slot.bg:SetWndSize(vector2():set(w, slot.bg:GetHeight()))
+            slot.bg:SetTextureColor(GetARGB(TAB_LIGHT.off, 255, 255, 255))
+            slot.over = false
+            slot.mark:InitTexture(MARKS[g.id] or MARKS.other)
+            slot.mark:SetTextureColor(argb(role))
+            local mh = slot.mark:GetHeight()
+            local mw = mh * wide
+            slot.count:SetText(string.format("%d/%d", g.known, g.total))
+            slot.count:SetTextColor(argb(role))
+            slot.count:AdjustWidthToText()
+            local left = (w - (mw + MARK_GAP + slot.count:GetWidth())) / 2
+            slot.mark:SetWndSize(vector2():set(mw, mh))
+            slot.mark:SetWndPos(vector2():set(left, slot.mark:GetWndPos().y))
+            slot.count:SetWndPos(vector2():set(left + mw + MARK_GAP, 0))
+            if on then
+                local h = slot.btn:GetHeight()
+                self.tab_on:SetWndPos(vector2():set(x, self.tab_y))
+                self.tab_on:SetWndSize(vector2():set(w, h))
+                self.tab_line:SetWndPos(vector2():set(x, self.tab_y + h - self.tab_line:GetHeight()))
+                self.tab_line:SetWndSize(vector2():set(w, self.tab_line:GetHeight()))
+                self.list_caption:SetText(almanac_page.caption(g))
+            end
+        end
+    end
 end
 
 function AlmanacPage:FillArtifacts()
@@ -154,13 +211,36 @@ function AlmanacPage:Update()
         self:ScrollArt()
         self.art_scroll = nil
     end
+    self:LightTabs()
 end
 
-function AlmanacPage:OnGroup()
-    local item = self.group_list:GetSelectedItem()
-    if item and item.key ~= view.group then
-        view.group = item.key
+-- the tab under the cursor a little lighter; on an engine that can't tell, they stay as they are
+function AlmanacPage:LightTabs()
+    if self.no_light or not self.groups then
+        return
+    end
+    for i, slot in ipairs(self.tabs) do
+        if self.groups[i] then
+            local ok, over = pcall(slot.btn.IsCursorOverWindow, slot.btn)
+            if not ok then
+                self.no_light = true
+                return
+            end
+            over = over == true
+            if over ~= slot.over then
+                slot.over = over
+                slot.bg:SetTextureColor(GetARGB(over and TAB_LIGHT.over or TAB_LIGHT.off, 255, 255, 255))
+            end
+        end
+    end
+end
+
+function AlmanacPage:OnTab(i)
+    local g = self.groups and self.groups[i]
+    if g and g.id ~= view.group then
+        view.group = g.id
         view.sec = nil
+        self:FillTabs()
         self:FillArtifacts()
     end
 end

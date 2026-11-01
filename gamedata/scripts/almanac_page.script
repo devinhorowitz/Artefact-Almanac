@@ -129,6 +129,11 @@ function groups(have)
     return out
 end
 
+-- a group's caption over its artifacts, from groups(): "Tier 4: 1 of 10 known"
+function caption(g)
+    return f("st_almanac_tab_caption", g.name, g.known, g.total)
+end
+
 -- a name as the list sorts it: opening quotes and spaces left out (Artefact Hunter's artifacts are
 -- quoted: "Lung", and in Russian with the cp1251 guillemets, bytes 171 and 187), case ignored
 function sort_key(name)

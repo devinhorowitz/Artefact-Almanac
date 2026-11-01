@@ -134,8 +134,11 @@ census on names, tiers, containers, detectors, recipes and every tree, and corre
 Almanac's truth; the offline census reads fields by folder and can't see other scripts' edits at
 load.
 
-**The page** (0.1.0, checked in game 2026-11-01): laid out like the PDA's Guide, with groups (all,
-junk, tiers 2-5, others) and counts, the artifacts of one, and the entry: the inventory's own stat
+**The page** (0.1.0, checked in game 2026-11-01): the groups (all, junk, tiers 2-5, others) as tabs
+across the top, each a mark and how many of its artifacts are known; then the artifacts of the
+chosen one beside the entry. The marks are the game's own language for tiers: GRIP's icons put one
+to four white chevrons on an artifact of tier 2 to 5, and the tabs carry the same; all is the
+Almanac's crystal, junk (no chevron on its icons) a pitted stone. The entry: the inventory's own stat
 card (GAMMA's caps included), the game's description, the detectors, where the Zone makes it, the
 recipe and its book, what it goes into, the totals from scratch, and what's still missing with what
 the player carries. It opens three ways: Mod App Creator's tile by default when MAC is installed,
