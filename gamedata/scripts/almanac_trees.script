@@ -201,6 +201,24 @@ function carried()
     return t
 end
 
+-- what the player can craft with: a copy of have, and with Craft From Stashes what the stashes
+-- within its range (MCM craft_from_stashes/range) hold, as the workshop counts them; the range too,
+-- or nil without it. A stash nearby may be one the player never opened, so this never makes an
+-- artifact known
+function with_stashes(have)
+    local t = {}
+    for sec, n in pairs(have or {}) do
+        t[sec] = n
+    end
+    if type(IterateStashesInRange) ~= "function" or not db.actor then
+        return t, nil
+    end
+    local ok, range = pcall(function() return ui_mcm and ui_mcm.get("craft_from_stashes/range") end)
+    range = (ok and tonumber(range)) or 10
+    pcall(IterateStashesInRange, function(_, item) add(t, item:section(), 1) end, range)
+    return t, range
+end
+
 -- whether the workshop would let the player use a book: a book item once its note is read; a
 -- recipe set that is no item (recipe_basic_0 and the like) from the start
 function book_known(book)

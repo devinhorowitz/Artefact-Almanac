@@ -63,6 +63,10 @@ MUTANTS = {
     "wanted_now": ("for _, who in ipairs(ok and now or {}) do", "for _, who in ipairs({}) do"),
     "wanted_listed": ("    if W and W.arts[a.sec] then\n", "    if W then\n"),
     "caption_found": ("                if found(sec) then\n                    fd = fd + 1\n", "                if false then\n                    fd = fd + 1\n"),
+    "supply_need": ("    put(need_block(C, a, supply, eager, range))", "    put(need_block(C, a, have, eager, range))"),
+    "stash_note": ('    if range then\n        lines[#lines + 1] = { f("st_almanac_need_stashes", range), "dim" }',
+                   '    if false then\n        lines[#lines + 1] = { f("st_almanac_need_stashes", range), "dim" }'),
+    "supply_caller": ("    if have == nil and _supply then\n", "    if _supply then\n"),
     "caption_counts": ('g.name, g.known, g.total, g.found)', 'g.name, g.total, g.known, g.found)'),
 }
 
@@ -75,6 +79,7 @@ STR = {
     st_almanac_need_melter = "No melter. %s", st_almanac_wanted_now = "Task for %s", st_almanac_wanted_named = "Tasks from %s",
     st_almanac_wanted_factions = "Squads of %s", st_almanac_wanted_some = "Some tasks", st_almanac_wanted_none = "No task",
     st_rank_master = "Master", st_rank_legend = "Legend", stalker = "Loners", ecolog = "Ecologists",
+    st_almanac_need_stashes = "Stashes %s",
     st_almanac_book_unread = "%s (unread)", st_almanac_book_builtin = "built in", st_almanac_into_later = "then %s",
     st_almanac_totals = "%s crafts, %s bottom, %s parts", st_almanac_need_done = "all there: %s",
     st_almanac_need_missing = "%s crafts, missing %s",
@@ -296,6 +301,15 @@ def main():
         g.NOTES["encyclopedia__notes_book1"] = True
         eq("book read", dict(entry("c", lua.table_from({"c": 1}))["blocks"])["st_almanac_h_made"], [("Book: Vol1", "body", None), ("Bee x2", "body", "b")])
         g.NOTES["encyclopedia__notes_book1"] = None
+        # the page's own fill: what's known by what's carried, crafting with the stashes in range too
+        P.set_have(lua.table_from({}), lua.table_from({"a_junk": 1, "part_p": 5, "melter": 1}), 10)
+        eq("stashes make nothing known", P.known("a_junk", None), False)
+        g.MCM["almanac/jailbreak"] = True
+        eq("need with the stashes", dict(entry("b", None)["blocks"])["st_almanac_h_need"],
+           [("all there: 1", "good", None), ("Stashes 10", "dim", None)])
+        eq("a caller's have alone", dict(entry("b", carry_b)["blocks"])["st_almanac_h_need"][0], ("1 crafts, missing 3", "body", None))
+        g.MCM["almanac/jailbreak"] = None
+        P.set_have(None, None, None)
         e = entry("a_junk", lua.table_from({"a_junk": 1}))
         B = dict(e["blocks"])
         eq("into a_junk", B["st_almanac_h_into"], [("Bee", "body", "b"), ("then Cee", "dim", "c"), ('then "Kay"', "dim", "k")])

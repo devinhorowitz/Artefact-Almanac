@@ -233,6 +233,9 @@
 	<string id="st_almanac_need_book">
 		<text>Not read yet: %s. %s</text>
 	</string>
+	<string id="st_almanac_need_stashes">
+		<text>Counting what your stashes within %s m hold too.</text>
+	</string>
 	<string id="st_almanac_need_melter">
 		<text>No Artefact Melter with you. %s</text>
 	</string>

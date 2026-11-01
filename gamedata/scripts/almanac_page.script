@@ -98,14 +98,16 @@ local function listed(a, have)
     return known(a.sec, have) or turns_up(a)
 end
 
-local _have
+local _have, _supply, _range
 -- what the player carries, read once per page fill (the UI passes it in)
 local function carry(have)
     return have or _have or {}
 end
 
-function set_have(have)
-    _have = have
+-- what the player carries (what's known by it), and what he can craft with: with Craft From
+-- Stashes, that and the stashes within range (almanac_trees.with_stashes), and the range
+function set_have(have, supply, range)
+    _have, _supply, _range = have, supply, range
 end
 
 function groups(have)
@@ -453,7 +455,7 @@ local function totals_block(C, a, eager)
     return { heading = t("st_almanac_h_totals"), lines = lines }
 end
 
-local function need_block(C, a, have, eager)
+local function need_block(C, a, have, eager, range)
     local nd = almanac_trees.need(a.sec, have, eager, C)
     if not nd then
         return nil
@@ -482,12 +484,22 @@ local function need_block(C, a, have, eager)
     for _, u in ipairs(unread) do
         lines[#lines + 1] = { f("st_almanac_need_book", u.name, source_text(C, u.book) or ""), "warn" }
     end
+    -- what was counted besides the pack
+    if range then
+        lines[#lines + 1] = { f("st_almanac_need_stashes", range), "dim" }
+    end
     return { heading = t("st_almanac_h_need"), lines = lines }
 end
 
 -- the entry for an artifact, or for an unknown one only that it's unknown
 function entry(sec, have)
+    -- the page's own fill crafts with its supply (the stashes in range too); a caller's have alone
+    local supply, range = have, nil
+    if have == nil and _supply then
+        supply, range = _supply, _range
+    end
     have = carry(have)
+    supply = supply or have
     local C = almanac_data.catalog()
     local a = C.artifacts[sec]
     if not a then
@@ -523,7 +535,7 @@ function entry(sec, have)
     put(into_block(C, a))
     put(wanted_block(C, a))
     put(totals_block(C, a, eager))
-    put(need_block(C, a, have, eager))
+    put(need_block(C, a, supply, eager, range))
     return e
 end
 

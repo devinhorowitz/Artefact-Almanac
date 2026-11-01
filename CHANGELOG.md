@@ -38,6 +38,8 @@
 - **Hearing of an artifact:** when the radio tells you a stalker found one, or a task asks you for
   one, it stops being unknown, and its entry says who and where ("on the radio, Vasya found one
   in Garbage, near the depot"; "Sakharov asked you for one"), with a PDA message.
+- **Nearby stashes:** with Craft From Stashes, "With what you carry" also counts what your stashes
+  within its range hold (and a Melter in one), as the workshop does, and says so.
 - **PDAs and Ecologists:** a dead stalker's PDA you pick up has its owner's notes on one to three
   artifacts you don't know (by its size), and any Ecologist will tell you of one, once a day each
   ("Have your people learned anything new about artifacts?"); those found on the level you're on
