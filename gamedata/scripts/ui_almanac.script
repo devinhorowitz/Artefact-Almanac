@@ -1,0 +1,369 @@
+--[[
+Artefact Almanac: the page in the PDA, laid out like the PDA's Guide: the groups, the artifacts of
+one, and the entry of one. almanac_page builds every word; this only lays it out.
+
+The entry is built anew for each artifact and added to its scroll view only once complete: a scroll
+view measures its content when a window is added, never when one is resized. The stat card is the
+inventory's own (utils_ui.get_stats_table and get_stats_xml), so its numbers are the inventory's.
+
+The same page opens flat, on a key set in MCM: a window of its own in the 2D PDA's frame, drawn
+straight to the screen and so as sharp as the inventory (the 3D PDA softens its pages). Escape or
+the key again closes it.
+--]]
+
+local SINGLETON, FLAT
+-- the PDA's pages sit this far into the screen (pda_16.xml main); the flat window too, so its frame
+-- and page land where the 2D PDA's do
+local PDA_X, PDA_Y = 112, 34
+local GAP = 6
+local ROW_H = 22        -- a list row, as the Guide's (ui_almanac.xml item_height)
+local ROLES = {
+    heading = { 238, 196, 112 }, body = { 200, 200, 200 }, dim = { 140, 140, 140 },
+    good = { 56, 209, 115 }, warn = { 238, 155, 23 },
+}
+
+local function argb(role)
+    local c = ROLES[role] or ROLES.body
+    return GetARGB(255, c[1], c[2], c[3])
+end
+
+local function say(msg)
+    printf("[almanac-page] %s", tostring(msg))
+end
+
+-- where the player was, kept while the game runs: the group and the artifact
+local view = { group = "all", sec = nil }
+
+-- a list's row: a name, and on the left column a count beside it
+class "AlmanacRow" (CUIListBoxItem)
+
+function AlmanacRow:__init(xml, key, name_node, text, role, count) super(ROW_H)
+    self.key = key
+    self.name = xml:InitTextWnd(name_node, self)
+    self.name:SetText(text)
+    self.name:SetTextColor(argb(role))
+    if count then
+        self.count = xml:InitTextWnd("group_count", self)
+        self.count:SetText(count)
+    end
+end
+
+class "AlmanacPage" (CUIScriptWnd)
+
+function AlmanacPage:__init(flat) super()
+    self.flat = flat == true
+    local x, y = self.flat and PDA_X or 0, self.flat and PDA_Y or 0
+    self:SetWndRect(Frect():set(x, y, x + 1024, y + 768))
+    local xml = CScriptXmlInit()
+    xml:ParseFile("ui_almanac.xml")
+    self.xml = xml
+    if self.flat then
+        xml:InitStatic("flat_bezel", self)
+        xml:InitTextWnd("flat_caption", self)
+    end
+    self.known_count = xml:InitTextWnd("known_count", self)
+    self.btn_back = xml:Init3tButton("btn_back", self)
+    self:Register(self.btn_back, "btn_back")
+    self:AddCallback("btn_back", ui_events.BUTTON_CLICKED, self.OnBack, self)
+    xml:InitStatic("rule_top", self)
+    self.group_list = xml:InitListBox("group_list", self)
+    self:Register(self.group_list, "group_list")
+    self:AddCallback("group_list", ui_events.LIST_ITEM_SELECT, self.OnGroup, self)
+    xml:InitStatic("rule_group", self)
+    self.art_list = xml:InitListBox("art_list", self)
+    self:Register(self.art_list, "art_list")
+    self:AddCallback("art_list", ui_events.LIST_ITEM_SELECT, self.OnArtifact, self)
+    xml:InitStatic("rule_art", self)
+    self.detail = xml:InitScrollView("detail", self)
+    xml:InitStatic("rule_foot", self)
+    self.jailbreak_lbl = xml:InitTextWnd("jailbreak_lbl", self)
+    self.credit = xml:InitTextWnd("credit", self)
+    self.credit:SetText(string.format(game.translate_string("st_almanac_credit"), almanac_page.VERSION))
+end
+
+function AlmanacPage:__finalize()
+    if self.flat then
+        FLAT = nil
+    else
+        SINGLETON = nil
+    end
+end
+
+-- everything afresh: what's carried, the counts, the groups, the artifacts, the entry
+function AlmanacPage:Fill()
+    almanac_page.set_have(almanac_trees.carried())
+    local k, n = almanac_page.counts()
+    self.known_count:SetText(string.format(game.translate_string("st_almanac_known_count"), k, n))
+    self.jailbreak_lbl:Show(almanac_page.jailbreak())
+    -- Back to Mod App Creator's launcher, in the PDA while the page has its tile
+    self.btn_back:Show(not self.flat and almanac_tab.back_to_launcher())
+    self.group_list:RemoveAll()
+    local keep, first
+    for i, g in ipairs(almanac_page.groups()) do
+        local row = AlmanacRow(self.xml, g.id, "group_name", g.name, "body", string.format("%d/%d", g.known, g.total))
+        self.group_list:AddExistingItem(row)
+        if g.id == view.group then
+            keep = i - 1
+        end
+        first = first or i - 1
+    end
+    self.group_list:SetSelectedIndex(keep or first or 0)
+    if not keep then
+        view.group = "all"
+    end
+    self:FillArtifacts()
+end
+
+function AlmanacPage:FillArtifacts()
+    self.art_list:RemoveAll()
+    local keep, first
+    for i, r in ipairs(almanac_page.rows(view.group)) do
+        local row = AlmanacRow(self.xml, r.sec, "art_name", r.name, r.known and "body" or "dim")
+        self.art_list:AddExistingItem(row)
+        if r.sec == view.sec then
+            keep = i - 1
+        end
+        first = first or r.sec
+    end
+    if keep then
+        self.art_list:SetSelectedIndex(keep)
+        self:ShowEntry(view.sec)
+    elseif first then
+        self.art_list:SetSelectedIndex(0)
+        self:ShowEntry(first)
+    else
+        self:ShowEntry(nil)
+    end
+    -- the selected row in view, near the middle: a refilled list keeps where it was scrolled, which
+    -- can leave its top out of sight; again at the next update, once the PDA has shown the page
+    self.art_scroll = math.max(0, (keep or 0) * ROW_H - self.art_list:GetHeight() / 2 + ROW_H)
+    self:ScrollArt()
+end
+
+function AlmanacPage:ScrollArt()
+    if self.art_scroll then
+        local ok, top = pcall(function() return self.art_list:GetMaxScrollPos() end)
+        top = ok and tonumber(top) or self.art_scroll
+        self.art_list:SetScrollPos(math.max(0, math.min(self.art_scroll, top)))
+    end
+end
+
+function AlmanacPage:Update()
+    CUIScriptWnd.Update(self)
+    if self.art_scroll then
+        self:ScrollArt()
+        self.art_scroll = nil
+    end
+end
+
+function AlmanacPage:OnGroup()
+    local item = self.group_list:GetSelectedItem()
+    if item and item.key ~= view.group then
+        view.group = item.key
+        view.sec = nil
+        self:FillArtifacts()
+    end
+end
+
+function AlmanacPage:OnArtifact()
+    local item = self.art_list:GetSelectedItem()
+    if item and item.key ~= view.sec then
+        self:ShowEntry(item.key)
+    end
+end
+
+-- an artifact's inventory icon in the frame, at most at its own size, centered
+local function put_icon(xml, parent, frame, sec)
+    local tex = utils_xml.get_icons_texture(sec)
+    local grid = utils_xml.get_item_axis(sec)
+    local x1, y1, x2, y2 = utils_xml.get_item_axis(sec, nil, true)
+    if type(x1) == "table" then
+        local r = x1
+        x1, y1 = r.x1, r.y1
+        x2 = r.x2 or (r.x1 and r.w and r.x1 + r.w)
+        y2 = r.y2 or (r.y1 and r.h and r.y1 + r.h)
+    end
+    if not (tex and type(grid) == "table" and x1 and y1 and x2 and y2) then
+        return
+    end
+    local w0, h0 = x2 - x1, y2 - y1
+    local sw, sh = grid.w or w0, grid.h or h0
+    local wide = utils_xml.is_widescreen() and 0.8 or 1
+    local fw, fh = frame:GetWidth(), frame:GetHeight()
+    local k = math.min(fw / (sw * wide), fh / sh, 1)
+    local w, h = sw * wide * k, sh * k
+    local icon = xml:InitStatic("entry_icon", parent)
+    icon:InitTexture(tex)
+    icon:SetTextureRect(Frect():set(x1, y1, x2, y2))
+    icon:SetStretchTexture(true)
+    icon:SetWndSize(vector2():set(w, h))
+    local p = frame:GetWndPos()
+    icon:SetWndPos(vector2():set(p.x + (fw - w) / 2, p.y + (fh - h) / 2))
+end
+
+-- the inventory's stat card rows for an artifact, in its order; returns the next y
+local function card(entry, sec, y)
+    local tbl = utils_ui.get_stats_table(sec)
+    if not tbl then
+        return y
+    end
+    local stats = {}
+    for stat, gr in pairs(tbl) do
+        stats[#stats + 1] = { stat = stat, gr = gr }
+    end
+    table.sort(stats, function(a, b) return (a.gr.index or 0) < (b.gr.index or 0) end)
+    for _, s in ipairs(stats) do
+        local ok, st = pcall(utils_ui.get_stats_xml, entry, nil, sec, s.gr, s.stat)
+        if ok and st then
+            st:SetWndPos(vector2():set(0, y))
+            y = y + st:GetHeight()
+        end
+    end
+    return y
+end
+
+function AlmanacPage:ShowEntry(sec)
+    view.sec = sec
+    self.detail:Clear()
+    if not sec then
+        return
+    end
+    local e = almanac_page.entry(sec)
+    if not e then
+        return
+    end
+    local xml = self.xml
+    local entry = xml:InitStatic("entry", nil)
+    local y = 0
+    if e.known then
+        xml:InitStatic("entry_icon_bg", entry)
+        put_icon(xml, entry, xml:InitStatic("entry_icon_frame", entry), sec)
+        y = 104
+    end
+    local function line(node, s, role)
+        local t = xml:InitTextWnd(node, entry)
+        t:SetWndPos(vector2():set(0, y))
+        t:SetText(s)
+        if role then
+            t:SetTextColor(argb(role))
+        end
+        if node == "entry_line" or node == "entry_name" then
+            t:AdjustHeightToText()
+        end
+        y = y + t:GetHeight() + 2
+        return t
+    end
+    local function rule()
+        local r = xml:InitStatic("entry_rule", entry)
+        r:SetWndPos(vector2():set(0, y + GAP / 2))
+        y = y + 1 + GAP
+    end
+    line("entry_name", e.name)
+    if e.kind then
+        line("entry_line", e.kind, "dim")
+    end
+    if e.weight then
+        line("entry_line", e.weight, "dim")
+    end
+    if e.known then
+        y = y + GAP
+        y = card(entry, sec, y)
+        if e.description and e.description ~= "" then
+            y = y + GAP
+            line("entry_line", e.description, "body")
+        end
+    end
+    for _, b in ipairs(e.blocks) do
+        if b.heading then
+            rule()
+            line("entry_heading", b.heading)
+        end
+        for _, l in ipairs(b.lines) do
+            line("entry_line", l[1], l[2])
+        end
+    end
+    entry:SetWndSize(vector2():set(entry:GetWidth(), y + GAP))
+    self.detail:AddWindow(entry, true)
+    entry:SetAutoDelete(true)
+end
+
+-- Back to Mod App Creator's launcher, where the tile opened the page
+function AlmanacPage:OnBack()
+    if self.flat then
+        self:Close()
+        return
+    end
+    local m = ActorMenu.get_pda_menu()
+    if m then
+        m:SetActiveSubdialog("eptLauncher")
+    end
+end
+
+function AlmanacPage:Reset()
+    local ok, err = pcall(function() self:Fill() end)
+    if not ok then
+        say("! the page could not be filled: " .. tostring(err))
+    end
+end
+
+function AlmanacPage:Close()
+    if self:IsShown() then
+        self:HideDialog()
+    end
+end
+
+-- flat, Escape and the page's key close it; in the PDA, the keys are the PDA's
+function AlmanacPage:OnKeyboard(dik, action)
+    local res = CUIScriptWnd.OnKeyboard(self, dik, action)
+    if res then
+        return res
+    end
+    if self.flat and action == ui_events.WINDOW_KEY_PRESSED
+        and (dik == DIK_keys.DIK_ESCAPE or dik == almanac_tab.key()) then
+        self:Close()
+        return true
+    end
+    return false
+end
+
+-- the page next opens on an artifact's entry, in the "all" group; a page shown now goes there at
+-- once (another app's link, or a test)
+function show_next(sec)
+    view.group, view.sec = "all", sec
+    for _, w in ipairs({ SINGLETON, FLAT }) do
+        if w and w:IsShown() then
+            w:Reset()
+        end
+    end
+end
+
+-- the entry's scroll view, for a test that scrolls it
+function detail_of(w)
+    return w and w.detail
+end
+
+-- the page for the PDA's tab or MAC's tile, filled afresh each time it's shown
+function get_ui()
+    SINGLETON = SINGLETON or AlmanacPage()
+    SINGLETON:Reset()
+    return SINGLETON
+end
+
+function open_flat()
+    FLAT = FLAT or AlmanacPage(true)
+    if not FLAT:IsShown() then
+        FLAT:Reset()
+        FLAT:ShowDialog(true)
+    end
+    return FLAT
+end
+
+function close_flat()
+    if FLAT then
+        FLAT:Close()
+    end
+end
+
+function flat_window()
+    return (FLAT and FLAT:IsShown()) and FLAT or nil
+end

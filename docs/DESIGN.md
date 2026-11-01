@@ -134,6 +134,15 @@ census on names, tiers, containers, detectors, recipes and every tree, and corre
 Almanac's truth; the offline census reads fields by folder and can't see other scripts' edits at
 load.
 
+**The page** (0.1.0, checked in game 2026-11-01): laid out like the PDA's Guide, with groups (all,
+junk, tiers 2-5, others) and counts, the artifacts of one, and the entry: the inventory's own stat
+card (GAMMA's caps included), the game's description, the detectors, where the Zone makes it, the
+recipe and its book, what it goes into, the totals from scratch, and what's still missing with what
+the player carries. It opens three ways: Mod App Creator's tile by default when MAC is installed,
+its own tab (MCM, or always without MAC), or an MCM key that opens it flat. For now an artifact is
+known while it's carried or once its Guide article is open; the discovery slice keeps finds in the
+save.
+
 **One entry per artifact** of kind `i_arty` or `i_arty_junk`, with its containers folded in. An
 artifact that never turns up short of console commands stays out of the counts, and the source
 map backs every such call.
