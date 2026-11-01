@@ -6,14 +6,21 @@
   atlas: e top-left, h top-right, t bottom-left, d bottom-right
   (configs/ui/textures_descr/ui_almanac.xml).
 - textures/ui/almanac_px.dds: 4x4 white, tinted by the page for rules and panels.
+- textures/ui/almanac_marks.dds: the group tabs' marks, white outlined in black so the page can
+  tint them, 64x64 each, left to right: all (the tile's crystal in its ring), junk (a pitted stone:
+  junk carries no tier mark), tiers 2 to 5 (one to four chevrons, as GRIP marks an artifact's tier
+  on its icon), other (a dashed ring); the last cell is left clear for the tabs' buttons, which
+  only take the clicks (a 3t button keeps its texture at its XML size, so the page draws the tabs'
+  panels itself).
 
     python make_art.py [PREVIEW.png]
 """
+import math
 import os
 import struct
 import sys
 
-from PIL import Image, ImageChops, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 UI = os.path.join(HERE, "..", "gamedata", "textures", "ui")
@@ -24,6 +31,8 @@ STATES = {                            # quadrant origin -> color
     "d": ((256, 256), (110, 110, 110)),
 }
 SS = 4                                # supersampling for smooth edges
+MARK = 64                             # a mark's cell in almanac_marks.dds
+MARKS = ["all", "junk", "t2", "t3", "t4", "t5", "other"]
 
 
 def shape():
@@ -45,6 +54,58 @@ def shape():
         c.line(s(*a, *b), fill=255, width=7 * SS)                        # its facets
     m = ImageChops.subtract(m, cuts)
     return m.resize((256, 256), Image.LANCZOS)
+
+
+def mark_mask(name):
+    """A mark's shape, MARK x MARK, white on black."""
+    n = MARK * SS
+    m = Image.new("L", (n, n), 0)
+    d = ImageDraw.Draw(m)
+
+    def s(*v):
+        return [x * SS for x in v]
+
+    if name == "all":
+        return shape().resize((MARK, MARK), Image.LANCZOS)
+    if name == "junk":
+        # a pitted stone
+        d.ellipse(s(13, 13, 51, 51), fill=255)
+        for x, y, r in ((25, 25, 5), (39, 31, 4), (28, 40, 3.5)):
+            d.ellipse(s(x - r, y - r, x + r, y + r), fill=0)
+    elif name == "other":
+        # a dashed ring: eight gaps
+        d.ellipse(s(12, 12, 52, 52), fill=255)
+        d.ellipse(s(19, 19, 45, 45), fill=0)
+        cut = Image.new("L", (n, n), 0)
+        c = ImageDraw.Draw(cut)
+        for k in range(8):
+            a = math.radians(k * 45 + 22.5)
+            c.line(s(32, 32, 32 + 30 * math.cos(a), 32 + 30 * math.sin(a)), fill=255, width=5 * SS)
+        m = ImageChops.subtract(m, cut)
+    else:
+        # tier N: N - 1 chevrons stacked, pointing up
+        count = int(name[1:]) - 1
+        w, h, step = 40, 14, 11
+        top = (MARK - (h + (count - 1) * step)) / 2
+        for i in range(count):
+            y = top + i * step
+            d.line(s(32 - w / 2, y + h, 32, y, 32 + w / 2, y + h), fill=255, width=7 * SS, joint="curve")
+    return m.resize((MARK, MARK), Image.LANCZOS)
+
+
+def marks():
+    """The marks, white outlined in black, then a clear cell."""
+    out = Image.new("RGBA", (MARK * len(MARKS) + MARK, MARK), (0, 0, 0, 0))
+    for i, name in enumerate(MARKS):
+        fill = mark_mask(name)
+        edge = fill.filter(ImageFilter.MaxFilter(5))
+        cell = Image.new("RGBA", (MARK, MARK), (0, 0, 0, 0))
+        cell.putalpha(edge)
+        white = Image.new("RGBA", (MARK, MARK), (255, 255, 255, 0))
+        white.putalpha(fill)
+        cell.alpha_composite(white)
+        out.paste(cell, (i * MARK, 0))
+    return out
 
 
 def atlas(mask):
@@ -71,10 +132,13 @@ def main():
     img = atlas(shape())
     write_dds(img, os.path.join(UI, "almanac_app.dds"))
     write_dds(Image.new("RGBA", (4, 4), (255, 255, 255, 255)), os.path.join(UI, "almanac_px.dds"))
-    print("wrote almanac_app.dds and almanac_px.dds in", os.path.normpath(UI))
+    mk = marks()
+    write_dds(mk, os.path.join(UI, "almanac_marks.dds"))
+    print("wrote almanac_app.dds, almanac_px.dds and almanac_marks.dds in", os.path.normpath(UI))
     if len(sys.argv) > 1:
-        bg = Image.new("RGBA", img.size, (24, 26, 28, 255))
+        bg = Image.new("RGBA", (img.size[0], img.size[1] + MARK + 16), (24, 26, 28, 255))
         bg.alpha_composite(img)
+        bg.alpha_composite(mk.crop((0, 0, min(mk.size[0], img.size[0]), MARK)), (0, img.size[1] + 8))
         bg.save(sys.argv[1])
         print("preview", sys.argv[1])
 

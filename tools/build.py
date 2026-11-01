@@ -70,6 +70,7 @@ def check():
     # every XML parses (string tables as windows-1251); a UI file's first element is <w>, since the
     # engine's UI parser gives up on anything before it and every widget is then nil
     defined, n_xml = set(), 0
+    tex_defined, tex_used = set(), set()
     for root, _, files in os.walk(GD):
         for f in files:
             if not f.endswith(".xml"):
@@ -87,6 +88,10 @@ def check():
                 bad.append("%s: the root element is <%s>, not <w>" % (p, tree.tag))
             if "\\text\\" in p or "/text/" in p:
                 defined |= {s.get("id") for s in tree.iter("string")}
+            if os.path.basename(root) == "textures_descr":
+                tex_defined |= {t.get("id") for t in tree.iter("texture")}
+            elif os.path.basename(root) == "ui":
+                tex_used |= {t.text.strip() for t in tree.iter("texture") if (t.text or "").strip().startswith("almanac_")}
     # every string id the scripts and UI files name is in the string table
     used = set()
     for root, _, files in os.walk(GD):
@@ -99,6 +104,16 @@ def check():
         if not sid.endswith("_"):
             bad.append("string id %s is used but not defined" % sid)
     print("xml parse: %d, string ids used: %d, defined: %d" % (n_xml, len(used), len(defined)))
+    # every texture id the UI files and scripts name is described, a 3t button's by its four states
+    for root, _, files in os.walk(GD):
+        for f in files:
+            if f.endswith(".script"):
+                text = open(os.path.join(root, f), encoding="latin-1").read()
+                tex_used |= set(re.findall(r'"(almanac_(?:app|px|mark|tab)[a-z0-9_]*)"', text))
+    for tid in sorted(tex_used):
+        if tid not in tex_defined and not all(tid + s in tex_defined for s in ("_e", "_h", "_t", "_d")):
+            bad.append("texture id %s is used but not described" % tid)
+    print("texture ids used: %d, described: %d" % (len(tex_used), len(tex_defined)))
     for t in TESTS:
         r = subprocess.run([sys.executable, "-I", os.path.join(HERE, t)], capture_output=True, text=True)
         last = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else r.stderr.strip()[-200:]
