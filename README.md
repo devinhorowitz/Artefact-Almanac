@@ -31,6 +31,11 @@ built once per load from the running game's configs, it holds every artifact wit
 tier and detectors, the workshop's recipes, each level's anomaly fields and the chance a field's pick
 names each artifact, and Dynamic Anomalies' lists. Nothing shows it yet.
 
+**The crafting trees** (`gamedata/scripts/almanac_trees.script`), on the catalog: an artifact's tree
+down to the artifacts nothing makes and the mutant parts, what it goes into, how much one takes in
+all (the Compass: 11 crafts, 4 junk artifacts, 35 mutant parts), and how much is still missing once
+what you carry is used.
+
 `python -I tools/build.py` checks the mod and installs it as the MO2 mod "Artefact Almanac"
 (`--mods <folder>` for another MO2 instance). `python -I tools/catalog_lua.py` runs the catalog over
 an install's configs and compares it with the offline census.
@@ -54,6 +59,7 @@ Paths come from `ALMANAC_GAMMA`, `ALMANAC_PROFILE`, `ALMANAC_ANOMALY` and `ALMAN
 python -I tools/test_census.py
 python -I tools/test_ingame_census.py
 python -I tools/test_catalog.py
+python -I tools/test_trees.py
 python -I tools/mutants.py
 ```
 

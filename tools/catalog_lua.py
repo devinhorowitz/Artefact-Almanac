@@ -1,14 +1,17 @@
-"""Run almanac_data.script under LuaJIT 2.0 over an install's configs, as the game would hand them to
-it, and compare its catalog with census.py's reading of the same install.
+"""Run almanac_data.script and almanac_trees.script under LuaJIT 2.0 over an install's configs, as
+the game would hand them to them, and compare the catalog and every artifact's tree totals with
+census.py's reading of the same install.
 
-The game's calls the script makes are served from gamecfg's reading of the install: ini_sys and
+The game's calls the scripts make are served from gamecfg's reading of the install: ini_sys and
 SYS_GetParam from system.ltx, ini_file from each file with its DLTX, the string tables for
-game.translate_string, the config file list for getFS, and the install's own Dynamic Anomalies
-script run as its module. Paths come from the ALMANAC_* settings (see gamecfg.py).
+game.translate_string, an alife with a zone per field config on its folder's level, and the
+install's own Dynamic Anomalies script run as its module. Paths come from the ALMANAC_* settings
+(see gamecfg.py).
 
     python -I catalog_lua.py              compare on the install the settings name; prints a JSON
                                           summary, exit 1 on any difference
     ALMANAC_DATA_SCRIPT=<path>            run another copy of almanac_data.script (the tests' mutants)
+    ALMANAC_TREES_SCRIPT=<path>           the same for almanac_trees.script
 """
 import json
 import os
@@ -22,6 +25,8 @@ from lua_jit import L  # noqa: E402
 
 SCRIPT = os.environ.get("ALMANAC_DATA_SCRIPT",
                         os.path.join(HERE, "..", "gamedata", "scripts", "almanac_data.script"))
+TREES = os.environ.get("ALMANAC_TREES_SCRIPT",
+                       os.path.join(HERE, "..", "gamedata", "scripts", "almanac_trees.script"))
 
 STUBS = r"""
 LOG = {}
@@ -155,11 +160,22 @@ def lua_catalog():
         g.drx_da_main_artefacts = g.run_module(text, "drx_da_main_artefacts")
     src = open(SCRIPT, encoding="utf-8").read()
     mod = g.run_module(src, "almanac_data")
+    g.almanac_data = mod
+    trees = g.run_module(open(TREES, encoding="utf-8").read(), "almanac_trees")
     C = mod.catalog()
-    return C, list(g.LOG.values())
+    return C, list(g.LOG.values()), trees
 
 
-def plain(C):
+def tree_plain(t):
+    """almanac_trees.totals' table in census.py's terms (None when nothing makes the artifact)"""
+    if t is None:
+        return None
+    return {"crafts": t.crafts, "books": sorted(t.books.keys()),
+            "artifacts": dict(sorted(t.artifacts.items())), "junk": t.junk,
+            "parts": dict(sorted(t.parts.items())), "part_count": t.part_count}
+
+
+def plain(C, trees):
     """the Lua catalog in the census's terms, for comparing"""
     def lst(t):
         return [t[i] for i in range(1, len(t) + 1)] if t is not None else []
@@ -167,6 +183,7 @@ def plain(C):
     arts = {}
     for sec, a in C.artifacts.items():
         arts[sec] = {
+            "tree": tree_plain(trees.totals(sec, False, C)),
             "kind": a.kind, "name": a.name, "tier": a.tier,
             "containers": sorted(lst(a.containers)),
             "detectors": sorted(lst(a.detectors)),
@@ -191,6 +208,7 @@ def expected(c):
             "made_by": sorted(a["made_by"]), "used_in": sorted(a["used_in"]),
             "fields": {lvl: sorted(ps) for lvl, ps in a["fields"].items()},
             "dao": a["dao"], "dao_random": a["dao_random"],
+            "tree": a["tree"],
         }
     return {"artifacts": arts, "groups": c["groups"]["registered"],
             "recipes": sorted(r["key"] for r in c["recipes"]), "fields": len(c["fields"]),
@@ -210,14 +228,14 @@ def compare(got, want):
     for sec in sorted(set(ga) & set(wa)):
         for field in wa[sec]:
             n += 1
-            if ga[sec][field] != wa[sec][field]:
-                diffs.append("%s.%s: lua %r, census %r" % (sec, field, ga[sec][field], wa[sec][field]))
+            if ga[sec].get(field) != wa[sec][field]:
+                diffs.append("%s.%s: lua %r, census %r" % (sec, field, ga[sec].get(field), wa[sec][field]))
     return diffs, n
 
 
 def main():
-    C, log = lua_catalog()
-    got = plain(C)
+    C, log, trees = lua_catalog()
+    got = plain(C, trees)
     want = expected(census.build())
     diffs, n = compare(got, want)
     print(json.dumps({"compared": n, "differences": diffs[:40], "n_differences": len(diffs),

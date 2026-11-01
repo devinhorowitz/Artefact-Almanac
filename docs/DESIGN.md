@@ -127,11 +127,12 @@ level's fields with the chance a pick names each artifact, and Dynamic Anomalies
 come from the anomaly zones' own spawn settings (`[anomal_zone] cfg`), since the engine's config
 file list leaves out `configs\scripts`; that also counts only fields the Zone actually spawns. Run
 offline over this install's configs, it gives the census's answers to the last comparison (1,026
-of them). Built in game on 2026-11-01 (483 ms, once per load on first use) it matched the census
-on names, tiers, containers, detectors and recipes, and corrected it on fields: 119 configs in use,
-not 120; some `pripyat` configs sit on SoC Pripyat rather than CoP Pripyat, and no zone uses Pole's
-two. The in-game catalog is the Almanac's truth; the offline census reads fields by folder and
-can't see other scripts' edits at load.
+of them). Built in game on 2026-11-01 (186-483 ms, once per load on first use) it matched the
+census on names, tiers, containers, detectors, recipes and every tree, and corrected it on fields:
+119 configs in use, not 120 (no zone uses Pole's `pol_smart_terrain_1_3`), and the four
+`pri_2c_*` configs sit on SoC Pripyat rather than CoP Pripyat. The in-game catalog is the
+Almanac's truth; the offline census reads fields by folder and can't see other scripts' edits at
+load.
 
 **One entry per artifact** of kind `i_arty` or `i_arty_junk`, with its containers folded in. An
 artifact that never turns up short of console commands stays out of the counts, and the source
@@ -162,6 +163,15 @@ map backs every such call.
 keep it (`arsenal_where`: a game vertex and position, worded by `GetPointDescription` when shown).
 
 ## 1.0: crafting trees
+
+**The trees** (`almanac_trees.script`) are built on the catalog: `down` (the tree under an
+artifact, a node per step, counts multiplied out), `up` (what it goes into, nearest first),
+`totals` (crafts, books, the artifacts nothing makes, mutant parts), `need` (one more of it, using
+what the player holds first, at any step, and what's still missing), `carried` (the inventory by
+section) and `book_known` (as the workshop decides it: a book item once its note is read; a
+built-in recipe set such as `recipe_basic_0` from the start). A step takes the first recipe that
+makes its artifact; a loop stops at the artifact it would repeat. Every artifact's totals equal
+the census's, offline and in game, where all 102 trees take under a millisecond.
 
 - **The tree for any artifact,** up and down: each step with its book, the Melter and its parts.
 - **How much you need:** the tree expanded down to junk artifacts and mutant parts, set against
