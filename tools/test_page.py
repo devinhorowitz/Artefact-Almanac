@@ -49,6 +49,9 @@ MUTANTS = {
     "heard_line": ("    elseif heard then\n", "    elseif false then\n"),
     "found_count": ("        if found(sec) then\n            n = n + 1\n", "        if true then\n            n = n + 1\n"),
     "group_hidden": ('        if total > 0 or g.id == "all" then\n', "        if true then\n"),
+    "shown_tier": ("        return a.tier - 1\n", "        return a.tier\n"),
+    "shown_from_two": ("a.tier and a.tier >= 2 then\n        return a.tier - 1", "a.tier and a.tier >= 1 then\n        return a.tier - 1"),
+    "junk_kind": ('    if a.kind == "i_arty_junk" then\n        return t("st_almanac_kind_junk")\n    end\n', ""),
     "caption_counts": ('f("st_almanac_tab_caption", g.name, g.known, g.total)', 'f("st_almanac_tab_caption", g.name, g.total, g.known)'),
 }
 
@@ -59,7 +62,7 @@ STR = {
     st_almanac_book_unread = "%s (unread)", st_almanac_book_builtin = "built in", st_almanac_into_later = "then %s",
     st_almanac_totals = "%s crafts, %s bottom, %s parts", st_almanac_need_done = "all there: %s",
     st_almanac_need_missing = "%s crafts, missing %s", st_almanac_need_books = "unread: %s",
-    st_almanac_kind_arty_tier = "Artifact %s", st_almanac_kind_junk_tier = "Junk %s", st_almanac_kind_arty = "Artifact",
+    st_almanac_kind_arty_tier = "Artifact %s", st_almanac_kind_junk = "Junk", st_almanac_kind_arty = "Artifact",
     st_almanac_weight = "W %s", st_almanac_unknown = "Unknown", st_almanac_unknown_entry = "Not met yet",
     st_almanac_detectors_none = "no detector",
 }
@@ -184,15 +187,15 @@ def main():
         eq("known by the Guide", P.known("c", none), True)
         g.ARTICLES["encyclopedia_artefacts_c"] = None
         # listed: z and q turn up no way the catalog sees, so only once known
-        eq("groups, nothing known", groups(none), [("all", 0, 6), ("junk", 0, 2), ("t2", 0, 1), ("t3", 0, 1), ("t4", 0, 1), ("other", 0, 1)])
+        eq("groups, nothing known", groups(none), [("all", 0, 6), ("junk", 0, 2), ("t1", 0, 1), ("t2", 0, 1), ("t3", 0, 1), ("other", 0, 1)])
         eq("rows, nothing known", [r[0] for r in rows("all", none)], ["a_junk", "b", "c", "j2", "k", "w"])
         eq("rows unknown", {r[1] for r in rows("all", none)}, {"Unknown"})
-        eq("groups, b carried", groups(carry_b), [("all", 2, 6), ("junk", 1, 2), ("t2", 1, 1), ("t3", 0, 1), ("t4", 0, 1), ("other", 0, 1)])
+        eq("groups, b carried", groups(carry_b), [("all", 2, 6), ("junk", 1, 2), ("t1", 1, 1), ("t2", 0, 1), ("t3", 0, 1), ("other", 0, 1)])
         eq("rows, b carried", [(r[0], r[2]) for r in rows("all", carry_b)], [("b", True), ("a_junk", True), ("c", False), ("j2", False), ("k", False), ("w", False)])
-        eq("rows t2 and other", (rows("t2", carry_b)[0][0], [r[0] for r in rows("other", carry_b)]), ("b", ["w"]))
+        eq("rows t1 and other", (rows("t1", carry_b)[0][0], [r[0] for r in rows("other", carry_b)]), ("b", ["w"]))
         eq("caption", P.caption(lst(P.groups(carry_b))[1]), "Junk: 1 of 2 known")
         g.MCM["almanac/jailbreak"] = True
-        eq("groups, jailbreak", groups(none), [("all", 8, 8), ("junk", 2, 2), ("t2", 1, 1), ("t3", 1, 1), ("t4", 2, 2), ("other", 2, 2)])
+        eq("groups, jailbreak", groups(none), [("all", 8, 8), ("junk", 2, 2), ("t1", 1, 1), ("t2", 1, 1), ("t3", 2, 2), ("other", 2, 2)])
         eq("sorted without quotes", [r[1] for r in rows("all", none)],
            ["Bee", "Cee", "Junk A", "Junk Two", '"Kay"', "Quest", "Wee", "Zed"])
         g.MCM["almanac/jailbreak"] = None
@@ -203,7 +206,11 @@ def main():
         eq("unknown entry tells nothing", any(w in flat for w in ("Cee", "DAO", "lvl", "Vol1", "Bee")), False)
         # a known entry
         e = entry("b", carry_b)
-        eq("kind", e["kind"], "Artifact 2")
+        eq("kind", e["kind"], "Artifact 1")
+        # the tier as the game shows it: the configs' less one; none for junk, tier 1 or no tier
+        arts = g.CAT.artifacts
+        eq("shown tiers", [P.kind_line(arts[s]) for s in ("b", "c", "z", "a_junk", "j2", "w", "q")],
+           ["Artifact 1", "Artifact 2", "Artifact 3", "Junk", "Junk", "Artifact", "Artifact"])
         heads = [b[0] for b in e["blocks"]]
         eq("headings", heads, ["st_almanac_h_detectors", "st_almanac_h_where", "st_almanac_h_made",
                                "st_almanac_h_into", "st_almanac_h_totals", "st_almanac_h_need"])
@@ -216,7 +223,7 @@ def main():
         eq("need", B["st_almanac_h_need"], [("1 crafts, missing 3", "body"), ("Paw x3", "warn")])
         # a find makes it known, after the pack is empty again, and the entry says when and how
         g.FOUND["z"] = lua.table_from({"date": "14.05.2012", "how": "picked up"})
-        eq("known by a find", (P.known("z", none), [r[0] for r in rows("t4", none) if r[2]]), (True, ["z"]))
+        eq("known by a find", (P.known("z", none), [r[0] for r in rows("t3", none) if r[2]]), (True, ["z"]))
         eq("found line", (P.entry("z", none).found[1], P.entry("z", none).found[2]), ("Found 14.05.2012: picked up", "good"))
         eq("not found line", P.entry("b", carry_b).found[1], "Not found")
         eq("counts", list(P.counts(none)), [1, 7, 1])

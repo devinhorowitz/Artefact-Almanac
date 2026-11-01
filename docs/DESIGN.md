@@ -55,8 +55,8 @@ install on 2026-11-01. Facts marked *inference* weren't checked in game.
 - **Fields** (`bind_anomaly_zone.script`, base): each pick takes one of a field's groups at
   random, then one of the group's artifacts. Artefacts Reinvention registers 34 groups; its
   `af_*_t0` and `af_special` groups are defined but not registered, so the 123 picks of 913 that
-  name one spawn nothing. 45 artifacts can come from a field: tier 2 to 4 artifacts and 13 kinds of
-  junk. No field yields tier 5.
+  name one spawn nothing. 45 artifacts can come from a field: config tier 2 to 4 artifacts (the
+  game's tiers 1 to 3) and 13 kinds of junk. No field yields config tier 5.
 - **Dynamic Anomalies** (`drx_da_main_artefacts.script`, run under LuaJIT 2.0 over these configs):
   33 levels with a list (60 artifacts across them), and a random pick, 25% of the time by
   default, from 64 artifacts as its script builds the list. Atom and Fountain are on no list and
@@ -134,14 +134,16 @@ census on names, tiers, containers, detectors, recipes and every tree, and corre
 Almanac's truth; the offline census reads fields by folder and can't see other scripts' edits at
 load.
 
-**The page** (0.1.0, checked in game 2026-11-01): the groups (all, junk, tiers 2-5, others) as tabs
+**The page** (0.1.0, checked in game 2026-11-01): the groups (all, junk, tiers 1-4, others) as tabs
 across the top, each a mark and how many of its artifacts are known; then the artifacts of the
-chosen one beside the entry. The marks are the game's own language for tiers: GRIP's icons put one
-to four white chevrons on an artifact of tier 2 to 5, and the tabs carry the same; all is the
-Almanac's crystal, junk (no chevron on its icons) a pitted stone. The entry: the inventory's own stat
-card (GAMMA's caps included), the game's description, the detectors, where the Zone makes it, the
-recipe and its book, what it goes into, the totals from scratch, and what's still missing with what
-the player carries. It opens three ways: Mod App Creator's tile by default when MAC is installed,
+chosen one beside the entry. **Tiers are numbered as the game shows them,** one below the configs'
+`tier`: Perk-Based Artefacts lowers every tier of 2 or more by one, its text speaks of tier 1 to 3
+artifacts, and GRIP's icons put N white chevrons on tier N (config tier 2 to 5 shows as 1 to 4).
+Junk shows no tier. The tabs carry the same chevrons; all is the Almanac's crystal, junk (no
+chevron on its icons) a pitted stone. The census keeps the configs' numbers. The entry: the
+inventory's own stat card (GAMMA's caps included), the game's description, the detectors, where the
+Zone makes it, the recipe and its book, what it goes into, the totals from scratch, and what's still
+missing with what the player carries. It opens three ways: Mod App Creator's tile by default when MAC is installed,
 its own tab (MCM, or always without MAC), or an MCM key that opens it flat.
 
 **Finds** (`almanac_found.script`, checked in game 2026-11-01): an artifact is found the first time

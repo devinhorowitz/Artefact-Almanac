@@ -73,6 +73,9 @@
 	<string id="st_almanac_group_junk">
 		<text>Junk</text>
 	</string>
+	<string id="st_almanac_group_t1">
+		<text>Tier 1</text>
+	</string>
 	<string id="st_almanac_group_t2">
 		<text>Tier 2</text>
 	</string>
@@ -81,9 +84,6 @@
 	</string>
 	<string id="st_almanac_group_t4">
 		<text>Tier 4</text>
-	</string>
-	<string id="st_almanac_group_t5">
-		<text>Tier 5</text>
 	</string>
 	<string id="st_almanac_group_other">
 		<text>Others</text>
@@ -100,9 +100,6 @@
 	</string>
 	<string id="st_almanac_kind_junk">
 		<text>Junk artifact</text>
-	</string>
-	<string id="st_almanac_kind_junk_tier">
-		<text>Junk artifact, tier %s</text>
 	</string>
 	<string id="st_almanac_kind_arty">
 		<text>Artifact</text>
