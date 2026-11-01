@@ -40,8 +40,41 @@ MUTANTS = {
                      'name = SYS_GetParam(0, sec, "inv_name", sec)'),
     "zones_once": ("                if not seen[key] then\n", "                if true then\n"),
     "zone_error": ("local ok, ini = pcall(se.spawn_ini, se)", "local ok, ini = true, se:spawn_ini()"),
-    "cfg_case": ('local path = string.lower(cfg):gsub("/", "\\\\")', 'local path = cfg:gsub("/", "\\\\")'),
+    "cfg_case": ('return (string.lower(path):gsub("/", "\\\\"))', 'return (path:gsub("/", "\\\\"))'),
     "zone_level": ("lvl = lok and lvl or \"?\"", "lvl = \"?\""),
+    "supplies_only": ('if s:match("^supplies_%d+$") then', "if true then"),
+    "item_count": ('if death:line_exist("item_count", item) then', "if true then"),
+    "chance_positive": ("if chance > 0 then", "if true then"),
+    "private_sections": ('for _, private in ipairs({ "", "_private" }) do', 'for _, private in ipairs({ "" }) do'),
+    "seller_names": ("names[#names + 1] = game.translate_string(n)", "names[#names + 1] = n"),
+    "fetch_args": ('local what = args and args:match("^[^:]*:([^:]+)")', 'local what = args and args:match("^([^:]+)")'),
+    "sim_comms": ('if comms and comms ~= "" then', "if false then"),
+    "sim_trader": ('local trader = id:match("^sim_default_(.-)_trader_task_%d+$")', "local trader = nil"),
+    "drx_prefix": ('local sid = id:gsub("^drx_sl_", ""):match("^(.-)_task_%d+$")', 'local sid = id:match("^(.-)_task_%d+$")'),
+}
+
+# on top of test_census's install: the book carried by legend-rank loners (privately) and master
+# Duty, the Melter in one death list but with no [item_count] entry (so never dropped) and only
+# bought by the trader; a fetch list and the tasks that use it (a faction's squads, a faction's
+# traders, a storyline NPC, and a task fetching something else); the trader map naming trade_x's
+# trader and a config nobody uses
+EXTRA = {
+    "base/configs/items/settings/death_generic.ltx":
+        "#include \"death_items.ltx\"\n[item_count]\naf_c = 1, 2\nrecipe_basic_4 = 1, 1\n[keep_items]\naf_d\n",
+    "base/configs/items/settings/death_items.ltx":
+        "[stalker_master]\naf_b = 1\n[stalker_private_legend]\nrecipe_basic_4 = 0.04\n[dolg_master]\nrecipe_basic_4 = 0.02\n"
+        "[stalker_legend]\nitm_artefactskit = 0.5\n",
+    "base/configs/items/trade/trade_x.ltx":
+        "[trader]\n[trade_generic_buy]\naf_a = 1, 1\nitm_artefactskit = 1, 1\n[supplies_1]\nrecipe_basic_4 = 1, 1\naf_d = 1, 1\n",
+    "base/configs/items/settings/fetch_list.ltx":
+        "[fetch_list]\nartefacts\nsupplies\n[artefacts]\naf_a = true\n[supplies]\nammo_x = true\n",
+    "base/configs/misc/task/task_manager.ltx":
+        "[x_task_1]\nfetch_func = %=setup_fetch_task(x_task_1_fetch:artefacts:1:1)%\nsim_communities = stalker\n"
+        "[sim_default_ecolog_trader_task_2]\nfetch_func = %=setup_fetch_task(sim_default_ecolog_trader_task_2_fetch:artefacts:1:1)%\n"
+        "[drx_sl_yan_x_task_3]\nfetch_func = %=setup_fetch_task(drx_sl_yan_x_task_3_fetch:artefacts:1:1)%\n"
+        "[w_task_1]\nfetch_func = %=setup_fetch_task(w_task_1_fetch:supplies:1:1)%\n[v_task_1]\ntitle = no fetch\n",
+    "base/configs/text/eng/st_d.xml": '<string_table><string id="st_trader_x"><text>Trader X</text></string></string_table>',
+    "traders.ltx": "[almanac_trade]\ntrade_x = st_trader_x\ntrade_nobody = -\n",
 }
 
 
@@ -62,9 +95,14 @@ def main():
                 f.write(src.replace(old, new))
         root = os.path.join(tmp, "install")
         test_census.write_install(root)
+        for rel, text in EXTRA.items():
+            p = os.path.join(root, *rel.split("/"))
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "w", encoding="cp1251", newline="\n") as f:
+                f.write(text)
         env = dict(os.environ, ALMANAC_GAMMA=os.path.join(root, "gamma"), ALMANAC_PROFILE="P",
                    ALMANAC_ANOMALY=os.path.join(root, "anomaly"), ALMANAC_BASE_CONFIGS=os.path.join(root, "base"),
-                   ALMANAC_DATA_SCRIPT=script)
+                   ALMANAC_DATA_SCRIPT=script, ALMANAC_TRADERS=os.path.join(root, "traders.ltx"))
         r = subprocess.run([sys.executable, "-I", os.path.join(HERE, "catalog_lua.py")], env=env,
                            capture_output=True, text=True)
         try:
@@ -83,6 +121,14 @@ def main():
             fails.append("no summary line: %r" % out["log"])
         if r.returncode != (1 if out["n_differences"] else 0):
             fails.append("exit %d with %d differences" % (r.returncode, out["n_differences"]))
+        # where the book and the Melter come from, and what fetch tasks can ask for, by whom
+        want = {"recipe_basic_4": {"sellers": ["Trader X"], "drops": [["stalker", "legend", 0.04], ["dolg", "master", 0.02]]},
+                "itm_artefactskit": {"sellers": [], "drops": []}}
+        if out["sources"] != want:
+            fails.append("sources: %r" % out["sources"])
+        got = (out["wanted"], out["wanted_tasks"], out["wanted_factions"], out["wanted_givers"])
+        if got != (["af_a"], 3, ["ecolog", "stalker"], ["yan_x"]):
+            fails.append("wanted: %r" % (got,))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     for f in fails:

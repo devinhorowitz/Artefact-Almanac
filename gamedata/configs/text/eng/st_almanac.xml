@@ -89,7 +89,7 @@
 		<text>Others</text>
 	</string>
 	<string id="st_almanac_tab_caption">
-		<text>%s: %s of %s known</text>
+		<text>%s: %s of %s known, %s found</text>
 	</string>
 
 	<string id="st_almanac_unknown">
@@ -142,8 +142,23 @@
 	<string id="st_almanac_h_made">
 		<text>Made at the Artefact Melter</text>
 	</string>
-	<string id="st_almanac_made_line">
-		<text>%s: %s</text>
+	<string id="st_almanac_made_book">
+		<text>Book: %s</text>
+	</string>
+	<string id="st_almanac_made_other">
+		<text>Or (book: %s): %s</text>
+	</string>
+	<string id="st_almanac_src_sold">
+		<text>Sold by %s</text>
+	</string>
+	<string id="st_almanac_src_carried">
+		<text>Carried by %s-rank stalkers (%s)</text>
+	</string>
+	<string id="st_almanac_src_carried_any">
+		<text>Carried by stalkers (%s)</text>
+	</string>
+	<string id="st_almanac_src_none">
+		<text>No trader sells it, and no one carries it.</text>
 	</string>
 	<string id="st_almanac_made_none">
 		<text>No recipe makes it.</text>
@@ -152,7 +167,7 @@
 		<text>%s x%s</text>
 	</string>
 	<string id="st_almanac_book_builtin">
-		<text>Known from the start</text>
+		<text>none needed</text>
 	</string>
 	<string id="st_almanac_book_unread">
 		<text>%s (not read yet)</text>
@@ -165,6 +180,24 @@
 	</string>
 	<string id="st_almanac_into_none">
 		<text>Nothing is made from it.</text>
+	</string>
+	<string id="st_almanac_h_wanted">
+		<text>Asked for</text>
+	</string>
+	<string id="st_almanac_wanted_now">
+		<text>Your task for %s asks for one now.</text>
+	</string>
+	<string id="st_almanac_wanted_named">
+		<text>Fetch tasks from %s may ask for one.</text>
+	</string>
+	<string id="st_almanac_wanted_factions">
+		<text>So may squads and traders of: %s.</text>
+	</string>
+	<string id="st_almanac_wanted_some">
+		<text>Fetch tasks may ask for one.</text>
+	</string>
+	<string id="st_almanac_wanted_none">
+		<text>No task asks for one.</text>
 	</string>
 
 	<string id="st_almanac_h_totals">
@@ -182,8 +215,11 @@
 	<string id="st_almanac_need_missing">
 		<text>%s crafts; still missing %s:</text>
 	</string>
-	<string id="st_almanac_need_books">
-		<text>Not read yet: %s</text>
+	<string id="st_almanac_need_book">
+		<text>Not read yet: %s. %s</text>
+	</string>
+	<string id="st_almanac_need_melter">
+		<text>No Artefact Melter with you. %s</text>
 	</string>
 
 	<string id="ui_mcm_menu_almanac">

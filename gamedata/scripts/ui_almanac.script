@@ -28,8 +28,9 @@ local MARKS = {
 }
 local ROLES = {
     heading = { 238, 196, 112 }, body = { 200, 200, 200 }, dim = { 140, 140, 140 },
-    good = { 56, 209, 115 }, warn = { 238, 155, 23 },
+    good = { 56, 209, 115 }, warn = { 238, 155, 23 }, link = { 120, 175, 230 },
 }
+local MAX_LINKS = 48    -- an entry's lines that link to another artifact's entry, at most
 
 local function argb(role)
     local c = ROLES[role] or ROLES.body
@@ -94,6 +95,11 @@ function AlmanacPage:__init(flat) super()
     self:AddCallback("art_list", ui_events.LIST_ITEM_SELECT, self.OnArtifact, self)
     xml:InitStatic("rule_art", self)
     self.detail = xml:InitScrollView("detail", self)
+    -- an entry's links: each ShowEntry registers its buttons under these names
+    self.links = {}
+    for k = 1, MAX_LINKS do
+        self:AddCallback("link_" .. k, ui_events.BUTTON_CLICKED, function() self:OnLink(k) end, self)
+    end
     xml:InitStatic("rule_foot", self)
     self.jailbreak_lbl = xml:InitTextWnd("jailbreak_lbl", self)
     self.credit = xml:InitTextWnd("credit", self)
@@ -212,6 +218,51 @@ function AlmanacPage:Update()
         self.art_scroll = nil
     end
     self:LightTabs()
+    self:LightLinks()
+end
+
+-- the link under the cursor in amber
+function AlmanacPage:LightLinks()
+    if self.no_light then
+        return
+    end
+    for _, l in ipairs(self.links) do
+        local ok, over = pcall(l.btn.IsCursorOverWindow, l.btn)
+        if not ok then
+            self.no_light = true
+            return
+        end
+        over = over == true
+        if over ~= l.over then
+            l.over = over
+            l.text:SetTextColor(argb(over and "heading" or "link"))
+        end
+    end
+end
+
+function AlmanacPage:OnLink(k)
+    local l = self.links[k]
+    if l then
+        self:GoTo(l.sec)
+    end
+end
+
+-- an artifact's entry, in the tab shown if it's listed there, else in All
+function AlmanacPage:GoTo(sec)
+    local here = false
+    for _, r in ipairs(almanac_page.rows(view.group)) do
+        here = here or r.sec == sec
+    end
+    if not here then
+        view.group = "all"
+    end
+    view.sec = sec
+    self:FillTabs()
+    self:FillArtifacts()
+    -- one the lists leave out (it never turns up and isn't known) still shows its entry
+    if view.sec ~= sec then
+        self:ShowEntry(sec)
+    end
 end
 
 -- the tab under the cursor a little lighter; on an engine that can't tell, they stay as they are
@@ -304,6 +355,7 @@ end
 
 function AlmanacPage:ShowEntry(sec)
     view.sec = sec
+    self.links = {}
     self.detail:Clear()
     if not sec then
         return
@@ -320,15 +372,30 @@ function AlmanacPage:ShowEntry(sec)
         put_icon(xml, entry, xml:InitStatic("entry_icon_frame", entry), sec)
         y = 104
     end
-    local function line(node, s, role)
+    -- a line; one naming another artifact (link) in the link color, with a clear button over it
+    -- that goes to that artifact's entry
+    local function line(node, s, role, link)
         local t = xml:InitTextWnd(node, entry)
         t:SetWndPos(vector2():set(0, y))
         t:SetText(s)
+        if link and #self.links < MAX_LINKS then
+            role = "link"
+        else
+            link = nil
+        end
         if role then
             t:SetTextColor(argb(role))
         end
         if node == "entry_line" or node == "entry_name" then
             t:AdjustHeightToText()
+        end
+        if link then
+            local k = #self.links + 1
+            local btn = xml:Init3tButton("entry_link", entry)
+            btn:SetWndPos(vector2():set(0, y))
+            btn:SetWndSize(vector2():set(entry:GetWidth(), t:GetHeight()))
+            self:Register(btn, "link_" .. k)
+            self.links[k] = { sec = link, text = t, btn = btn }
         end
         y = y + t:GetHeight() + 2
         return t
@@ -362,7 +429,7 @@ function AlmanacPage:ShowEntry(sec)
             line("entry_heading", b.heading)
         end
         for _, l in ipairs(b.lines) do
-            line("entry_line", l[1], l[2])
+            line("entry_line", l[1], l[2], l[3])
         end
     end
     entry:SetWndSize(vector2():set(entry:GetWidth(), y + GAP))
@@ -413,7 +480,8 @@ end
 -- once (another app's link, or a test)
 function show_next(sec)
     view.group, view.sec = "all", sec
-    for _, w in ipairs({ SINGLETON, FLAT }) do
+    -- false, not nil, for a page not made yet: ipairs stops at the first nil
+    for _, w in ipairs({ SINGLETON or false, FLAT or false }) do
         if w and w:IsShown() then
             w:Reset()
         end

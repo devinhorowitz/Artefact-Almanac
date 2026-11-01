@@ -89,6 +89,10 @@
 	<entry_heading x="0" y="0" width="452" height="20">
 		<text font="letterica18" r="238" g="196" b="112" align="l" vert_align="c"/>
 	</entry_heading>
+	<!-- a link line's button: clear, only for the click (ui_almanac sizes it to the line) -->
+	<entry_link x="0" y="0" width="452" height="18" stretch="1" check_mode="0">
+		<texture>almanac_tab</texture>
+	</entry_link>
 	<entry_line x="0" y="0" width="452" height="18">
 		<text font="letterica16" r="200" g="200" b="200" align="l" vert_align="t" complex_mode="1"/>
 	</entry_line>

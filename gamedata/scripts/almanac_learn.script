@@ -132,6 +132,24 @@ function read_tasks(quiet)
     return n
 end
 
+-- the givers of the player's tasks that ask for this artifact now (a container counts as it)
+function asking(sec)
+    local out = {}
+    local tm = task_manager and task_manager.get_task_manager and task_manager.get_task_manager()
+    local info = tm and tm.task_info
+    if type(info) ~= "table" or not db.actor then
+        return out
+    end
+    for task_id, t in pairs(info) do
+        local want = load_var(db.actor, task_id .. "_fetch")
+        if type(want) == "string" and almanac_found.artifact_of(want) == sec then
+            out[#out + 1] = giver_name(type(t) == "table" and t.task_giver_id) or "?"
+        end
+    end
+    table.sort(out)
+    return out
+end
+
 local function actor_on_first_update()
     wrap_news()
     wrap_tip()

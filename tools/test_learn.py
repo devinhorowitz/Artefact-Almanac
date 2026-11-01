@@ -37,6 +37,8 @@ MUTANTS = {
     "task_quiet": ("pcall(read_tasks, first_read)", "pcall(read_tasks, false)"),
     "task_artifact": ('local a = type(sec) == "string" and almanac_found.artifact_of(sec)', "local a = sec"),
     "giver": ("who = giver_name(type(t) == \"table\" and t.task_giver_id)", "who = nil"),
+    "asking_artifact": ('if type(want) == "string" and almanac_found.artifact_of(want) == sec then',
+                        'if type(want) == "string" then'),
 }
 
 WORLD = r"""
@@ -198,6 +200,8 @@ def main():
         g.NOW = 8000
         cb.actor_on_update()
         eq("next read", [c for c in calls()[before + 1:] if c[0] == "af_c"], [("af_c", "task", "Sidorovich", None, False)])
+        # the page asks which of the player's tasks want an artifact now, and from whom
+        eq("asking", [list(M.asking(s).values()) for s in ("af_b", "af_c", "af_a")], [["Sidorovich"], ["Sidorovich"], []])
         # nothing to wrap: the wrappers stand aside
         g.dynamic_news_manager = None
         M2 = load(src)
