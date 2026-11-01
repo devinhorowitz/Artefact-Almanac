@@ -233,7 +233,10 @@ the census's, offline and in game, where all 102 trees take under a millisecond.
 
 - **The tree for any artifact,** up and down: each step with its book, the Melter and its parts.
 - **How much you need:** the tree expanded down to junk artifacts and mutant parts, set against
-  what the player carries (and, with Craft From Stashes, what nearby stashes hold). Read in game
+  what the player carries (and, with Craft From Stashes, what the stashes within its MCM range hold,
+  through its own `IterateStashesInRange`, as the workshop counts them; a line says so; a stash
+  nearby may be one never opened, so its contents count only toward crafting, never toward what's
+  known). Read in game
   from `itms_manager.ini_craft`, the live file with DLTX, as the workshop reads it: the key's first
   two characters dropped, 6, 8 or 10 fields, amounts over 4 one less with the "artificer
   eagerness" achievement.

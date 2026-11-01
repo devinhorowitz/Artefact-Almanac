@@ -116,7 +116,8 @@ end
 
 -- everything afresh: what's carried, the counts, the groups, the artifacts, the entry
 function AlmanacPage:Fill()
-    almanac_page.set_have(almanac_trees.carried())
+    local have = almanac_trees.carried()
+    almanac_page.set_have(have, almanac_trees.with_stashes(have))
     local k, n, found = almanac_page.counts()
     self.known_count:SetText(string.format(game.translate_string("st_almanac_known_count"), k, n, found))
     self.jailbreak_lbl:Show(almanac_page.jailbreak())

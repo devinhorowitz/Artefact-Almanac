@@ -19,8 +19,9 @@ the chevrons your inventory puts on an artifact of that tier, and for each artif
 own stat card, the detectors that show it, where the Zone makes it (anomaly fields and shifting
 anomalies, by level), its recipe at the Artefact Melter and the book it needs (with who sells or
 carries a book you haven't read), what it goes into, who may ask you for one, how much it takes from
-scratch, and how much you still lack with what you carry. Every artifact an entry names is a link to
-its own entry.
+scratch, and how much you still lack with what you carry (with Craft From Stashes, your stashes
+within its range count too, as at the workshop). Every artifact an entry names is a link to its own
+entry.
 It opens three ways, your choice: Mod App Creator's tile, its own PDA tab, or a key (MCM) that opens
 it flat and sharp. Artifacts you haven't held or read about in the Guide stay unknown; MCM's "Show
 everything" opens them all.

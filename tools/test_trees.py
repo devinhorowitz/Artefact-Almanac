@@ -36,7 +36,12 @@ MUTANTS = {
     "need_eager": ("want(p[1], amount(p[2], eager) * n, path)", "want(p[1], p[2] * n, path)"),
     "book_item": ("    if not ini_sys:section_exist(book) then\n        return true\n",
                   "    if not ini_sys:section_exist(book) then\n        return false\n"),
-    "carried_count": ("add(t, item:section(), 1)", "t[item:section()] = 1"),
+    "carried_count": ("function(_, item)\n            add(t, item:section(), 1)", "function(_, item)\n            t[item:section()] = 1"),
+    "stash_items": ("pcall(IterateStashesInRange, function(_, item) add(t, item:section(), 1) end, range)",
+                    "pcall(IterateStashesInRange, function(_, item) end, range)"),
+    "stash_range": ("range = (ok and tonumber(range)) or 10", "range = 10"),
+    "stash_copy": ("    local t = {}\n    for sec, n in pairs(have or {}) do\n",
+                   "    local t = have or {}\n    for sec, n in pairs({}) do\n"),
 }
 
 WORLD = r"""
@@ -147,6 +152,21 @@ def main():
         eq("need c, eager", (r.crafts, d(r.missing), r.done), (3, {}, True))
         eq("need of what nothing makes", T.need("f", lua.table_from({})), None)
         eq("carried", d(T.carried()), {"a_junk": 2, "part_p": 1, "wpn_pm": 1})
+        # without Craft From Stashes, the pack alone; with it, the stashes in its range (MCM) too
+        have = lua.table_from({"a_junk": 1})
+        t, rng = T.with_stashes(have)
+        eq("no stashes", (d(t), rng), ({"a_junk": 1}, None))
+        lua.execute("""
+            STASHED = { "a_junk", "part_p", "part_p" }
+            function IterateStashesInRange(fn, range)
+                RANGE_ASKED = range
+                for i = 1, #STASHED do fn("box", { section = function() return STASHED[i] end }) end
+            end
+            ui_mcm = { get = function(k) return k == "craft_from_stashes/range" and 25 or nil end }
+        """)
+        t, rng = T.with_stashes(have)
+        eq("with stashes", (d(t), rng, lua.globals().RANGE_ASKED), ({"a_junk": 2, "part_p": 2}, 25, 25))
+        eq("have unchanged by stashes", d(have), {"a_junk": 1})
         eq("books", [T.book_known("book1"), T.book_known("book2"), T.book_known("recipe_basic_0")], [True, False, True])
     except Exception as e:
         fails.append("the run crashed: %s" % str(e).splitlines()[0])
