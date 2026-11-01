@@ -279,7 +279,11 @@ expiry. Nothing on the HUD.
   DXML), Mod App Creator's tile, or an MCM key that opens it flat. MAC isn't required, and the tile
   gives way to the tab when MAC is present.
 - **The vanilla PDA look,** as Arsenal's.
-- **English and Russian,** reusing Seasons' term choices.
+- **English and Russian,** reusing Seasons' term choices (КПК, параметр, a name framed rather than
+  declined: «%s», a colon, parentheses) and the game's own Russian words (Плавильщик артефактов,
+  Справочник, учёные, мусорные артефакты, артефакт N-го уровня). The name stays "Artefact Almanac",
+  as Seasons keeps its own; the tab is «Альманах». `text/rus/st_almanac.xml` holds every id the
+  English table does; build.py fails on one missing, one extra, or a %s count that differs.
 
 ## Saves
 

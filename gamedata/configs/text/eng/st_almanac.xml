@@ -111,7 +111,7 @@
 		<text>Unknown artifact</text>
 	</string>
 	<string id="st_almanac_unknown_entry">
-		<text>You haven't come across this one yet. Once one is in your hands, you hear of one on the radio or a task asks for one, or you've read about it in the PDA's Guide, it opens here.</text>
+		<text>You haven't come across this one yet. It opens here once one is in your hands or you hear of one: on the radio, from a task, a dead stalker's PDA or an Ecologist, or in the PDA's Guide.</text>
 	</string>
 	<string id="st_almanac_kind_junk">
 		<text>Junk artifact</text>
@@ -247,13 +247,13 @@
 		<text>Show everything</text>
 	</string>
 	<string id="ui_mcm_almanac_jailbreak_desc">
-		<text>Every artifact opens in the Almanac at once, known or not. Off, an artifact opens once one has been in your hands or you've read about it in the PDA's Guide.</text>
+		<text>Every artifact opens in the Almanac at once, known or not. Off, an artifact opens as you come to know it: in your hands, on the radio, from a task, a PDA or an Ecologist, or in the PDA's Guide.</text>
 	</string>
 	<string id="ui_mcm_almanac_news">
 		<text>Messages</text>
 	</string>
 	<string id="ui_mcm_almanac_news_desc">
-		<text>A PDA message when an artifact you hadn't found before comes into your hands.</text>
+		<text>A PDA message when an artifact you hadn't found before comes into your hands, or you hear of one you didn't know.</text>
 	</string>
 	<string id="ui_mcm_almanac_pda_tab">
 		<text>Its own PDA tab</text>

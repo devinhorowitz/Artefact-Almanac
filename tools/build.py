@@ -69,7 +69,8 @@ def check():
         bad.append("no scripts under " + GD)
     # every XML parses (string tables as windows-1251); a UI file's first element is <w>, since the
     # engine's UI parser gives up on anything before it and every widget is then nil
-    defined, n_xml = set(), 0
+    n_xml = 0
+    tables = {}     # language -> string id -> text
     tex_defined, tex_used = set(), set()
     for root, _, files in os.walk(GD):
         for f in files:
@@ -87,12 +88,27 @@ def check():
             if os.path.basename(root) == "ui" and tree.tag != "w":
                 bad.append("%s: the root element is <%s>, not <w>" % (p, tree.tag))
             if "\\text\\" in p or "/text/" in p:
-                defined |= {s.get("id") for s in tree.iter("string")}
+                t = tables.setdefault(os.path.basename(root), {})
+                for s in tree.iter("string"):
+                    t[s.get("id")] = s.findtext("text") or ""
             if os.path.basename(root) == "textures_descr":
                 tex_defined |= {t.get("id") for t in tree.iter("texture")}
             elif os.path.basename(root) == "ui":
                 tex_used |= {t.text.strip() for t in tree.iter("texture") if (t.text or "").strip().startswith("almanac_")}
-    # every string id the scripts and UI files name is in the string table
+    # every string id the scripts and UI files name is in the English table (another language
+    # falls back to it); every other language has the English ids, no others, and the same %s in each
+    eng = tables.get("eng", {})
+    defined = set(eng)
+    for lang, t in sorted(tables.items()):
+        if lang == "eng":
+            continue
+        for sid in sorted(set(eng) - set(t)):
+            bad.append("%s: %s isn't translated" % (lang, sid))
+        for sid in sorted(set(t) - set(eng)):
+            bad.append("%s: %s isn't in the English table" % (lang, sid))
+        for sid in sorted(set(t) & set(eng)):
+            if t[sid].count("%s") != eng[sid].count("%s"):
+                bad.append("%s: %s has %d %%s, the English %d" % (lang, sid, t[sid].count("%s"), eng[sid].count("%s")))
     used = set()
     for root, _, files in os.walk(GD):
         for f in files:
@@ -103,7 +119,8 @@ def check():
         # ids in code end in "_"
         if not sid.endswith("_"):
             bad.append("string id %s is used but not defined" % sid)
-    print("xml parse: %d, string ids used: %d, defined: %d" % (n_xml, len(used), len(defined)))
+    print("xml parse: %d, string ids used: %d, defined: %d, languages: %s"
+          % (n_xml, len(used), len(defined), ", ".join(sorted(tables))))
     # every texture id the UI files and scripts name is described, a 3t button's by its four states
     for root, _, files in os.walk(GD):
         for f in files:

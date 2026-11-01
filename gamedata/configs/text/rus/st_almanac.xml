@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="st_almanac_title">
+		<text>Artefact Almanac</text>
+	</string>
+	<string id="st_almanac_tab">
+		<text>Альманах</text>
+	</string>
+	<string id="st_almanac_back">
+		<text>Назад</text>
+	</string>
+	<string id="st_almanac_known_count">
+		<text>Известно: %s из %s. Найдено: %s</text>
+	</string>
+	<string id="st_almanac_new_entry">
+		<text>Новое в Альманахе: %s</text>
+	</string>
+	<string id="st_almanac_found_on">
+		<text>Найден %s: %s</text>
+	</string>
+	<string id="st_almanac_not_found">
+		<text>Ещё не найден</text>
+	</string>
+	<string id="st_almanac_learned_on">
+		<text>Известен с %s: %s</text>
+	</string>
+	<string id="st_almanac_got_news">
+		<text>по радио сообщили, что %s нашёл такой</text>
+	</string>
+	<string id="st_almanac_got_task">
+		<text>%s попросил принести такой</text>
+	</string>
+	<string id="st_almanac_got_pda">
+		<text>из записей в КПК (%s)</text>
+	</string>
+	<string id="st_almanac_got_talk">
+		<text>%s рассказал о таком</text>
+	</string>
+	<string id="st_almanac_talk_ask">
+		<text>Ваши люди не узнали ничего нового об артефактах?</text>
+	</string>
+	<string id="st_almanac_talk">
+		<text>Мы сейчас изучаем артефакт «%s». Отправлю наши записи вам на КПК.</text>
+	</string>
+	<string id="st_almanac_talk_none">
+		<text>Сегодня мне нечего вам рассказать.</text>
+	</string>
+	<string id="st_almanac_in">
+		<text>(%s)</text>
+	</string>
+	<string id="st_almanac_by_someone">
+		<text>кто-то</text>
+	</string>
+	<string id="st_almanac_got_stash">
+		<text>взят из тайника</text>
+	</string>
+	<string id="st_almanac_got_body">
+		<text>снят с тела (%s)</text>
+	</string>
+	<string id="st_almanac_got_trade">
+		<text>куплен у торговца (%s)</text>
+	</string>
+	<string id="st_almanac_got_gift">
+		<text>получен в подарок (%s)</text>
+	</string>
+	<string id="st_almanac_got_ground">
+		<text>подобран</text>
+	</string>
+	<string id="st_almanac_got_craft">
+		<text>сделан Плавильщиком артефактов</text>
+	</string>
+	<string id="st_almanac_got_carried">
+		<text>уже был в рюкзаке</text>
+	</string>
+	<string id="st_almanac_got_loot">
+		<text>найден при обыске</text>
+	</string>
+	<string id="st_almanac_credit">
+		<text>Artefact Almanac %s</text>
+	</string>
+	<string id="st_almanac_jailbreak_on">
+		<text>Показано всё (MCM)</text>
+	</string>
+	<string id="st_almanac_group_all">
+		<text>Все</text>
+	</string>
+	<string id="st_almanac_group_junk">
+		<text>Мусорные</text>
+	</string>
+	<string id="st_almanac_group_t1">
+		<text>Уровень 1</text>
+	</string>
+	<string id="st_almanac_group_t2">
+		<text>Уровень 2</text>
+	</string>
+	<string id="st_almanac_group_t3">
+		<text>Уровень 3</text>
+	</string>
+	<string id="st_almanac_group_t4">
+		<text>Уровень 4</text>
+	</string>
+	<string id="st_almanac_group_other">
+		<text>Прочие</text>
+	</string>
+	<string id="st_almanac_tab_caption">
+		<text>%s: известно %s из %s, найдено %s</text>
+	</string>
+	<string id="st_almanac_unknown">
+		<text>Неизвестный артефакт</text>
+	</string>
+	<string id="st_almanac_unknown_entry">
+		<text>Вы ещё не встречали этот артефакт. Он откроется здесь, когда окажется у вас в руках или вы услышите о нём: по радио, из задания, из КПК погибшего сталкера, от учёного или из Справочника КПК.</text>
+	</string>
+	<string id="st_almanac_kind_junk">
+		<text>Мусорный артефакт</text>
+	</string>
+	<string id="st_almanac_kind_arty">
+		<text>Артефакт</text>
+	</string>
+	<string id="st_almanac_kind_arty_tier">
+		<text>Артефакт %s-го уровня</text>
+	</string>
+	<string id="st_almanac_weight">
+		<text>Вес: %s кг</text>
+	</string>
+	<string id="st_almanac_and_more">
+		<text>%s и ещё %s</text>
+	</string>
+	<string id="st_almanac_h_detectors">
+		<text>Детекторы, которые его видят</text>
+	</string>
+	<string id="st_almanac_detectors_none">
+		<text>Ни один детектор его не видит.</text>
+	</string>
+	<string id="st_almanac_h_where">
+		<text>Где его создаёт Зона</text>
+	</string>
+	<string id="st_almanac_fields">
+		<text>Аномальные поля: %s</text>
+	</string>
+	<string id="st_almanac_dao">
+		<text>Динамические аномалии: %s</text>
+	</string>
+	<string id="st_almanac_dao_random">
+		<text>Иногда — любая динамическая аномалия.</text>
+	</string>
+	<string id="st_almanac_where_craft_only">
+		<text>Создаётся только Плавильщиком артефактов.</text>
+	</string>
+	<string id="st_almanac_where_none">
+		<text>Его не создают ни поля, ни аномалии.</text>
+	</string>
+	<string id="st_almanac_h_made">
+		<text>Плавильщик артефактов</text>
+	</string>
+	<string id="st_almanac_made_book">
+		<text>Книга: %s</text>
+	</string>
+	<string id="st_almanac_made_other">
+		<text>Или (книга: %s): %s</text>
+	</string>
+	<string id="st_almanac_src_sold">
+		<text>Продаёт: %s</text>
+	</string>
+	<string id="st_almanac_src_carried">
+		<text>Бывает у сталкеров ранга «%s» (%s)</text>
+	</string>
+	<string id="st_almanac_src_carried_any">
+		<text>Бывает у сталкеров (%s)</text>
+	</string>
+	<string id="st_almanac_src_none">
+		<text>Никто не продаёт и ни у кого не бывает.</text>
+	</string>
+	<string id="st_almanac_made_none">
+		<text>Ни один рецепт его не создаёт.</text>
+	</string>
+	<string id="st_almanac_part">
+		<text>%s x%s</text>
+	</string>
+	<string id="st_almanac_book_builtin">
+		<text>не нужна</text>
+	</string>
+	<string id="st_almanac_book_unread">
+		<text>%s (ещё не прочитана)</text>
+	</string>
+	<string id="st_almanac_h_into">
+		<text>Идёт на создание</text>
+	</string>
+	<string id="st_almanac_into_later">
+		<text>затем %s</text>
+	</string>
+	<string id="st_almanac_into_none">
+		<text>Из него ничего не создают.</text>
+	</string>
+	<string id="st_almanac_h_wanted">
+		<text>Кто спрашивает</text>
+	</string>
+	<string id="st_almanac_wanted_now">
+		<text>Ваше задание сейчас просит принести такой (%s).</text>
+	</string>
+	<string id="st_almanac_wanted_named">
+		<text>Принести такой могут попросить в заданиях: %s.</text>
+	</string>
+	<string id="st_almanac_wanted_factions">
+		<text>А также отряды и торговцы: %s.</text>
+	</string>
+	<string id="st_almanac_wanted_some">
+		<text>Принести такой могут попросить в заданиях.</text>
+	</string>
+	<string id="st_almanac_wanted_none">
+		<text>Ни одно задание его не просит.</text>
+	</string>
+	<string id="st_almanac_h_totals">
+		<text>С нуля</text>
+	</string>
+	<string id="st_almanac_totals">
+		<text>Изготовлений: %s; исходных артефактов: %s; частей мутантов: %s.</text>
+	</string>
+	<string id="st_almanac_h_need">
+		<text>С тем, что у вас есть</text>
+	</string>
+	<string id="st_almanac_need_done">
+		<text>Всё есть. Изготовлений: %s.</text>
+	</string>
+	<string id="st_almanac_need_missing">
+		<text>Изготовлений: %s; не хватает: %s.</text>
+	</string>
+	<string id="st_almanac_need_book">
+		<text>Не прочитана: %s. %s</text>
+	</string>
+	<string id="st_almanac_need_stashes">
+		<text>Учтены и ваши тайники в радиусе %s м.</text>
+	</string>
+	<string id="st_almanac_need_melter">
+		<text>У вас нет Плавильщика артефактов. %s</text>
+	</string>
+	<string id="ui_mcm_menu_almanac">
+		<text>Artefact Almanac</text>
+	</string>
+	<string id="ui_mcm_almanac_jailbreak">
+		<text>Показать всё</text>
+	</string>
+	<string id="ui_mcm_almanac_jailbreak_desc">
+		<text>Все артефакты сразу открыты в Альманахе, известные или нет. Если выключено, артефакт открывается, когда вы о нём узнаёте: побывав у вас в руках, по радио, из задания, КПК или от учёного, или из Справочника КПК.</text>
+	</string>
+	<string id="ui_mcm_almanac_news">
+		<text>Сообщения</text>
+	</string>
+	<string id="ui_mcm_almanac_news_desc">
+		<text>Сообщение в КПК, когда у вас в руках оказывается артефакт, которого вы ещё не находили, или вы узнаёте о новом.</text>
+	</string>
+	<string id="ui_mcm_almanac_pda_tab">
+		<text>Отдельная вкладка в КПК</text>
+	</string>
+	<string id="ui_mcm_almanac_pda_tab_desc">
+		<text>Открывать Альманах с собственной вкладки КПК, а не из лаунчера Mod App Creator.</text>
+	</string>
+	<string id="ui_mcm_almanac_tab_key">
+		<text>Клавиша, открывающая Альманах</text>
+	</string>
+	<string id="ui_mcm_almanac_tab_key_desc">
+		<text>Открывает Альманах в отдельном окне, чётком, как инвентарь. По умолчанию не назначена.</text>
+	</string>
+	<string id="ui_mcm_almanac_about">
+		<text>Альманах открывается тремя способами, на ваш выбор: собственная вкладка КПК, плитка Mod App Creator или клавиша выше.</text>
+	</string>
+</string_table>
