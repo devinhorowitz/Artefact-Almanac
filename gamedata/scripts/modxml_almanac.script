@@ -1,6 +1,7 @@
 --[[
 Artefact Almanac: DXML, an invisible PDA tab button for the page's section, which Mod App Creator's
-tile opens (z_almanac_mac).
+tile opens (z_almanac_mac); and the Ecologists' talk (almanac_learn), a dialog in
+gameplay\dialogs.xml added to every character's list, which only an Ecologist offers.
 
 The PDA shows its tab bar and caption only for a section with a button, and switches only to a
 section that has one. So the button is parked off screen, with no width and a see-through caption,
@@ -13,8 +14,32 @@ local CAPTION = "st_almanac_tab"
 
 local said = {}
 
--- the parked button, once per layout
+DIALOG = "almanac_ecolog"
+local DIALOGS = [[
+<dialog id="almanac_ecolog">
+    <precondition>almanac_learn.talk_ok</precondition>
+    <phrase_list>
+        <phrase id="0">
+            <text>st_almanac_talk_ask</text>
+            <next>1</next>
+        </phrase>
+        <phrase id="1">
+            <script_text>almanac_learn.talk_text</script_text>
+            <action>almanac_learn.talk_told</action>
+        </phrase>
+    </phrase_list>
+</dialog>
+]]
+
+-- the parked button, once per layout; the talk, once
 function edit(name, xml)
+    if name == [[gameplay\dialogs.xml]] or name == [[gameplay/dialogs.xml]] then
+        if #xml:query("dialog[id=" .. DIALOG .. "]") > 0 then
+            return false
+        end
+        xml:insertFromXMLString(DIALOGS)
+        return true
+    end
     if not string.match(name, "^ui[\\/]pda[%w_]*%.xml$") then
         return false
     end
@@ -39,6 +64,22 @@ function on_xml_read()
         if not ok and not said[tostring(err)] then
             said[tostring(err)] = true
             printf("[almanac-tab] DXML %s: %s", tostring(name), tostring(err))
+        end
+    end)
+end
+
+-- the talk on every character's list; its precondition (almanac_learn.talk_ok) keeps it to
+-- Ecologists
+function on_game_start()
+    RegisterScriptCallback("on_specific_character_dialog_list", function(character_id, list)
+        local ok, err = pcall(function()
+            if not list:has(DIALOG) then
+                list:add(DIALOG)
+            end
+        end)
+        if not ok and not said[tostring(err)] then
+            said[tostring(err)] = true
+            printf("[almanac-tab] the talk: %s", tostring(err))
         end
     end)
 end

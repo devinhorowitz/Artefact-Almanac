@@ -11,6 +11,13 @@ once, with when, from whom and where, and only while the artifact isn't found.
 - Tasks: a fetch task keeps what it asks for in the actor's var "<task id>_fetch". Every few seconds,
   and at each load, the tasks the player has are read, and an artifact one asks for is learned,
   from the task's giver.
+- A looted PDA (a corpse's, as ui_pda_npc_tab registered its owner): its owner's notes on as many
+  artifacts as its size (common 1, uncommon 2, rare 3), once per PDA and owner; an encrypted one
+  when a technician has decrypted it. As Arsenal's intel reads PDAs.
+- An Ecologist's talk (a dialog modxml_almanac adds to every character, which only a living
+  Ecologist who isn't hostile offers): word of one artifact, once a day each.
+Both tell of artifacts the player doesn't know yet that turn up somewhere, those the Zone makes on
+the level the player is on first.
 
 Both wrappers pass every argument through and give back every result, and stand aside when the
 script they wrap is missing.
@@ -20,6 +27,9 @@ VERSION = "0.1.0"
 
 CHECK_MS = 5000         -- how often the tasks are read
 MAX_PENDING = 64        -- queued radio messages remembered at most
+-- a corpse's PDA and how many artifacts its notes tell of
+PDA_SIZE = { itm_pda_common = 1, itm_pda_uncommon = 2, itm_pda_rare = 3 }
+local READ, TALKED = "almanac_read", "almanac_talked"     -- the marks on a PDA and an Ecologist
 
 local pending, n_pending = {}, 0     -- a queued message's text -> { sec, who, place }
 local wrapped_news, wrapped_tip = false, false
@@ -150,9 +160,177 @@ function asking(sec)
     return out
 end
 
+-- up to n artifacts to tell the player of: unknown to him, turning up somewhere, those the Zone
+-- makes on level lvl (its fields or Dynamic Anomalies' list) first, each part in random order
+function word_of(n, lvl)
+    local C = almanac_data.catalog()
+    local here, elsewhere = {}, {}
+    for _, sec in ipairs(C.order) do
+        local a = C.artifacts[sec]
+        if not almanac_page.known(sec) and almanac_page.turns_up(a) then
+            local t = (lvl and ((a.fields and a.fields[lvl]) or (a.dao and a.dao[lvl]))) and here or elsewhere
+            t[#t + 1] = sec
+        end
+    end
+    local out = {}
+    for _, t in ipairs({ here, elsewhere }) do
+        for i = #t, 2, -1 do
+            local j = math.random(i)
+            t[i], t[j] = t[j], t[i]
+        end
+        for _, sec in ipairs(t) do
+            if #out < n then
+                out[#out + 1] = sec
+            end
+        end
+    end
+    return out
+end
+
+-- the game date, a day's mark
+local function day()
+    local y, mo, d = game.get_game_time():get()
+    return y * 10000 + mo * 100 + d
+end
+
+-- a PDA's owner, as ui_pda_npc_tab registered it: the read mark holds this, so a PDA given to
+-- another owner (the game reuses a released object's id) is read anew
+local function owner_of(info)
+    local c = type(info) == "table" and info.contact
+    if type(c) ~= "table" then
+        return "-"
+    end
+    return table.concat({ tostring(c.name), tostring(c.comm), tostring(c.rank) }, "|")
+end
+
+-- a PDA: its owner's notes, once; the number of artifacts learned
+function on_pda(obj, quiet)
+    local id = obj and obj:id()
+    local size = id and PDA_SIZE[obj:section()]
+    if not size then
+        return 0
+    end
+    local info = se_load_var(id, obj:name(), "info")
+    local who = owner_of(info)
+    if se_load_var(id, obj:name(), READ) == who then
+        return 0
+    end
+    local c = type(info) == "table" and info.contact
+    if not (type(c) == "table" and c.name) then
+        se_save_var(id, obj:name(), READ, who)
+        return 0
+    end
+    if info.state == "encrypted" then
+        return 0
+    end
+    se_save_var(id, obj:name(), READ, who)
+    local n = 0
+    for _, sec in ipairs(word_of(size, level.name())) do
+        if almanac_found.learn(sec, { kind = "pda", who = c.name, place = almanac_found.place_of(db.actor) }, quiet) then
+            n = n + 1
+        end
+    end
+    return n
+end
+
+-- the PDAs in the pack (at a load, quietly, for those picked up before the Almanac; after a
+-- decryption)
+function scan_pdas(quiet)
+    if not db.actor then
+        return
+    end
+    db.actor:iterate_inventory(function(_, obj)
+        if obj and PDA_SIZE[obj:section()] then
+            on_pda(obj, quiet)
+        end
+    end, db.actor)
+end
+
+-- the decryption a technician sells: what it unlocks is read then
+function wrap_decrypt()
+    local t = ui_pda_npc_tab
+    if not (t and type(t.unlock_encrypted_pda) == "function") or t.almanac_wrapped then
+        return t ~= nil and t.almanac_wrapped == true
+    end
+    local orig = t.unlock_encrypted_pda
+    t.unlock_encrypted_pda = function(...)
+        local res = { orig(...) }
+        pcall(scan_pdas, false)
+        return unpack(res)
+    end
+    t.almanac_wrapped = true
+    return true
+end
+
+---------------------------------------------------------------------------------------------
+-- an Ecologist's talk (the dialog almanac_ecolog, added by modxml_almanac)
+---------------------------------------------------------------------------------------------
+
+local picks = {}    -- by an Ecologist's id: what he would tell, and who he is
+
+local function npc_of(a, b)
+    return (a and a:id() == AC_ID) and b or a
+end
+
+local function willing(npc)
+    return npc and npc:alive() and npc:character_community() == "ecolog"
+        and not (npc.relation and npc:relation(db.actor) == game_object.enemy)
+end
+
+-- a released NPC's id goes to the next one the game makes: a pick keeps whose it was
+local function whose(npc)
+    return npc:name() .. "|" .. npc:character_name()
+end
+
+-- a living Ecologist who isn't hostile, not talked to today, with something new to tell: what he
+-- would tell is picked now, and picked again if the player has come to know it since
+function talk_ok(a, b)
+    local npc = npc_of(a, b)
+    if not willing(npc) or se_load_var(npc:id(), npc:name(), TALKED) == day() then
+        return false
+    end
+    local t = picks[npc:id()]
+    if t and (t.who ~= whose(npc) or almanac_page.known(t.sec)) then
+        t = nil
+    end
+    if not t then
+        local sec = word_of(1, level.name())[1]
+        t = sec and { sec = sec, who = whose(npc) } or nil
+    end
+    picks[npc:id()] = t
+    return t ~= nil
+end
+
+function talk_text(a, b)
+    local npc = npc_of(a, b)
+    local t = npc and picks[npc:id()]
+    if not t then
+        return game.translate_string("st_almanac_talk_none")
+    end
+    return string.format(game.translate_string("st_almanac_talk"), almanac_data.catalog().artifacts[t.sec].name)
+end
+
+function talk_told(a, b)
+    local npc = npc_of(a, b)
+    local t = picks[npc:id()]
+    picks[npc:id()] = nil
+    se_save_var(npc:id(), npc:name(), TALKED, day())
+    if t then
+        almanac_found.learn(t.sec, { kind = "talk", who = npc:character_name(), place = almanac_found.place_of(npc) })
+    end
+end
+
+local function actor_on_item_take(obj)
+    if obj and PDA_SIZE[obj:section()] then
+        on_pda(obj, false)
+    end
+end
+
 local function actor_on_first_update()
     wrap_news()
     wrap_tip()
+    wrap_decrypt()
+    pcall(scan_pdas, true)
     next_check = time_global() + 1000
 end
 
@@ -171,4 +349,5 @@ end
 function on_game_start()
     RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
     RegisterScriptCallback("actor_on_update", actor_on_update)
+    RegisterScriptCallback("actor_on_item_take", actor_on_item_take)
 end
