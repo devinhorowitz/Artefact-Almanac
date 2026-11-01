@@ -47,13 +47,18 @@ function found(sec)
     return almanac_found ~= nil and almanac_found.is_found(sec) == true
 end
 
+-- heard of without holding one (almanac_learn: the radio, a task)
+function learned(sec)
+    return almanac_found ~= nil and almanac_found.is_learned(sec) == true
+end
+
 -- whether the player knows an artifact: the jailbreak, a find, carrying one, or its Guide article
 -- open
 function known(sec, have)
     if jailbreak() then
         return true
     end
-    if found(sec) then
+    if found(sec) or learned(sec) then
         return true
     end
     if have and (have[sec] or 0) > 0 then
@@ -380,10 +385,14 @@ function entry(sec, have)
     local e = { sec = sec, known = true, name = a.name, kind = kind_line(a),
                 weight = a.weight and f("st_almanac_weight", string.format("%.2f", a.weight)) or nil,
                 description = t(ini_sys:r_string_ex(sec, "description") or ""), blocks = {} }
-    -- when, how and where it was found, or that it hasn't been
+    -- when, how and where it was found; else when and how it was heard of; else that it hasn't
+    -- been found
     local at = almanac_found and almanac_found.found_at(sec)
+    local heard = not at and almanac_found and almanac_found.learned_at(sec)
     if at then
         e.found = { f("st_almanac_found_on", almanac_found.date_of(at), almanac_found.describe(at)), "good" }
+    elseif heard then
+        e.found = { f("st_almanac_learned_on", almanac_found.date_of(heard), almanac_found.describe(heard)), "heading" }
     else
         e.found = { t("st_almanac_not_found"), "dim" }
     end

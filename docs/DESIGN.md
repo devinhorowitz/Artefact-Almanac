@@ -148,8 +148,16 @@ Each find keeps its date, way and place (a game vertex and position, put into wo
 "picked up in Darkscape, at the sawmill"), and a new one is a PDA message unless MCM's "Messages" is
 off. A found artifact stays known. The finds are the save's only Almanac state, under
 `m_data.almanac` (schema 1, plain values); a save loads cleanly with the Almanac removed, the key
-left unread. Still to come: learning of an artifact without holding one (Ecologist talks, PDAs,
-news, tasks).
+left unread.
+
+**Learning without holding** (`almanac_learn.script`): an artifact is heard of, and so known, when
+the radio's "found an artifact" news about it reaches the player (the stalker's name and where he
+stood are kept), or when one of the player's tasks asks for it (its giver is kept). The news is
+queued and may never be sent, so the artifact is learned only once its message goes out:
+`DynamicNewsManager:FoundArtefact` is wrapped to note the queued text, `dynamic_news_helper.send_tip`
+to catch it. Tasks are read every few seconds from the fetch item each keeps
+(`<task id>_fetch`), quietly at a load. Heard-of records sit beside the finds in
+`m_data.almanac.learned`. Still to come: Ecologist talks and looted PDAs.
 
 **One entry per artifact** of kind `i_arty` or `i_arty_junk`, with its containers folded in. An
 artifact that never turns up short of console commands stays out of the counts, and the source

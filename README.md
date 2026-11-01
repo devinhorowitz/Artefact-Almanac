@@ -27,6 +27,10 @@ up, looted, bought, given, made at the Melter) and where, and tells you on the P
 kept in your save under the Almanac's own key; removing the mod leaves that key unread and the save
 loads as before.
 
+**Hearing of one.** You don't have to hold an artifact to learn of it: when the radio reports that a
+stalker found one, or one of your tasks asks you for one, it stops being unknown, and its entry says
+who and where.
+
 **The in-game census** (`gamedata/scripts/almanac_census.script`, the only thing the mod holds so
 far). Once after each load, and once after each emission and psi storm, it counts every artifact the
 game holds, level by level: the ones lying free, by kind, with who spawned them (a field or Dynamic
@@ -75,6 +79,7 @@ python -I tools/test_catalog.py
 python -I tools/test_trees.py
 python -I tools/test_page.py
 python -I tools/test_found.py
+python -I tools/test_learn.py
 python -I tools/mutants.py
 ```
 

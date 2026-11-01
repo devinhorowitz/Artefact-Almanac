@@ -20,6 +20,7 @@ SCHEMA = 1
 local KINDS = { i_arty = true, i_arty_junk = true }
 
 local found = {}        -- section -> { y, mo, d, h, mi, lvl, how = { kind, who, place } }
+local learned = {}      -- section -> the same, for an artifact heard of before it was found
 local scanned = false   -- the load-time scan has run; messages only after it
 
 local function T(id)
@@ -97,6 +98,31 @@ function is_found(sec)
     return found[sec] ~= nil
 end
 
+-- learn of an artifact without holding one (almanac_learn: the radio, a task): kept like a find,
+-- once, and only while it isn't found; returns the artifact when it's new
+function learn(sec, how, quiet)
+    local a = artifact_of(sec)
+    if not a or found[a] or learned[a] then
+        return nil
+    end
+    local at = stamp()
+    at.how = how
+    learned[a] = at
+    if not quiet then
+        notify({ a })
+    end
+    return a
+end
+
+function is_learned(sec)
+    return learned[sec] ~= nil
+end
+
+-- when, where and how an artifact was heard of: { y, mo, d, h, mi, lvl, how }, or nil
+function learned_at(sec)
+    return learned[sec]
+end
+
 -- when, where and how an artifact was found: { y, mo, d, h, mi, lvl, how }, or nil
 function found_at(sec)
     return found[sec]
@@ -152,9 +178,10 @@ function place_text(place, lvl)
     return lvl and string.format(T("st_almanac_in"), T(lvl)) or ""
 end
 
--- the ways a find can come, and whether its words name someone
+-- the ways a find can come, and whether its words name someone; news and task are how an
+-- artifact is heard of (learn)
 local WAYS = { stash = false, ground = false, craft = false, carried = false, loot = false,
-               body = true, trade = true, gift = true }
+               body = true, trade = true, gift = true, news = true, task = true }
 
 -- how and where a find came, in words ("bought from Sakharov in Yantar, ..."); the level alone for
 -- a find with no how
@@ -260,24 +287,34 @@ local function plain(at)
     return out
 end
 
-local function save_state(m_data)
-    local f = {}
-    for sec, at in pairs(found) do
-        f[sec] = plain(at)
+local function plain_all(t)
+    local out = {}
+    for sec, at in pairs(t) do
+        out[sec] = plain(at)
     end
-    m_data.almanac = { v = SCHEMA, found = f }
+    return out
+end
+
+local function read_all(t)
+    local out = {}
+    if type(t) == "table" then
+        for sec, at in pairs(t) do
+            if type(sec) == "string" then
+                out[sec] = plain(at)
+            end
+        end
+    end
+    return out
+end
+
+local function save_state(m_data)
+    m_data.almanac = { v = SCHEMA, found = plain_all(found), learned = plain_all(learned) }
 end
 
 local function load_state(m_data)
     local d = m_data.almanac
-    found = {}
-    if type(d) == "table" and type(d.found) == "table" then
-        for sec, at in pairs(d.found) do
-            if type(sec) == "string" then
-                found[sec] = plain(at)
-            end
-        end
-    end
+    found = read_all(type(d) == "table" and d.found)
+    learned = read_all(type(d) == "table" and d.learned)
     scanned = false
 end
 

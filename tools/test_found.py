@@ -30,11 +30,15 @@ MUTANTS = {
     "living": ("            elseif IsStalker(partner) and living(gui, partner) then\n", "            elseif false then\n"),
     "craft": ("    if ws and ws:IsShown() then\n", "    if false then\n"),
     "news_off": ("    return not (ok and v == false)\n", "    return true\n"),
-    "load_plain": ("                found[sec] = plain(at)\n", "                found[sec] = at\n"),
+    "load_plain": ("                out[sec] = plain(at)\n", "                out[sec] = at\n"),
+    "learn_found": ("    if not a or found[a] or learned[a] then\n", "    if not a or learned[a] then\n"),
+    "learn_once": ("    if not a or found[a] or learned[a] then\n", "    if not a or found[a] then\n"),
+    "learn_saved": (", learned = plain_all(learned) }", " }"),
+    "learn_quiet": ("    learned[a] = at\n    if not quiet then\n", "    learned[a] = at\n    if true then\n"),
     "strip_comma": ('s = ok and type(s) == "string" and s:gsub("[,%s]+$", "") or nil',
                     's = ok and type(s) == "string" and s or nil'),
     "vertex_check": ("    if gg and gg:valid_vertex_id(place.gv) then\n", "    if gg then\n"),
-    "schema": ("    m_data.almanac = { v = SCHEMA, found = f }\n", "    m_data.almanac = { found = f }\n"),
+    "schema": ("m_data.almanac = { v = SCHEMA, found = plain_all(found)", "m_data.almanac = { found = plain_all(found)"),
     "who": ('s = string.format(s, (how.who and how.who ~= "") and how.who or T("st_almanac_by_someone"))',
             's = string.format(s, T("st_almanac_by_someone"))'),
 }
@@ -50,13 +54,15 @@ STR = { st_almanac_new_entry = "New: %s", st_almanac_in = "in %s", l01_escape = 
         st_almanac_got_ground = "picked up", st_almanac_got_trade = "bought from %s",
         st_almanac_got_body = "taken from %s", st_almanac_got_gift = "given by %s",
         st_almanac_got_stash = "from a stash", st_almanac_got_craft = "made", st_almanac_got_carried = "carried",
-        st_almanac_by_someone = "someone", st_almanac_title = "Almanac" }
+        st_almanac_by_someone = "someone", st_almanac_title = "Almanac",
+        st_almanac_got_news = "radio, %s found one", st_almanac_got_task = "%s asked" }
 game = {
     translate_string = function(id) return STR[id] or id end,
     get_game_time = function() return { get = function() return 2012, 5, 14, 8, 30, 0, 0 end } end,
 }
 level = { name = function() return "l01_escape" end }
-KIND = { af_a = "i_arty", af_b = "i_arty_junk", af_c = "i_arty", af_d = "i_arty", af_e = "i_arty",
+KIND = { af_k = "i_arty", af_l = "i_arty", af_m = "i_arty",
+         af_a = "i_arty", af_b = "i_arty_junk", af_c = "i_arty", af_d = "i_arty", af_e = "i_arty",
          af_f = "i_arty", af_g = "i_arty", af_h = "i_arty", af_i = "i_arty", af_j = "i_arty",
          af_b_lead_box = "i_arty_cont", wpn_pm = "w_pistol" }
 function SYS_GetParam(_, sec, key, def) return key == "kind" and KIND[sec] or def end
@@ -190,6 +196,18 @@ def main():
         # six messages before the switch (ground, trade, body, gift, stash, craft), none after it
         eq("silenced", (len(news()), any("(silenced)" in x for x in g.LOG.values())), (6, True))
         g.TALK = False
+        g.MCM["almanac/news"] = None
+        # heard of: once, never for what's found, quietly when asked, in words like a find
+        place = lua.table_from({"gv": 5, "x": 1, "y": 2, "z": 3})
+        eq("learn", F.learn("af_k", lua.table_from({"kind": "news", "who": "Vasya", "place": place})), "af_k")
+        eq("learn message", news()[-1], "Almanac|New: af_k")
+        eq("learn words", F.describe(F.learned_at("af_k")), "radio, Vasya found one in Cordon, near the village")
+        eq("learn once", F.learn("af_k", lua.table_from({"kind": "task", "who": "X"})), None)
+        eq("learn what's found", (F.learn("af_a", lua.table_from({"kind": "task"})), F.is_learned("af_a")), (None, False))
+        before = len(news())
+        eq("learn quietly", (F.learn("af_l", lua.table_from({"kind": "task", "who": "Sid"}), True), len(news()) - before), ("af_l", 0))
+        eq("learned isn't found", (F.is_learned("af_l"), F.is_found("af_l")), (True, False))
+        g.MCM["almanac/news"] = False
         eq("date", F.date_of(F.found_at("af_c")), "14.05.2012")
         eq("count", (F.count_found(), F.count_found(lua.table_from(["af_a", "af_x"]))), (10, 1))
         # a place whose vertex isn't on this mod list: the level alone; a find with no how: the level
@@ -206,6 +224,8 @@ def main():
         g.CALLBACKS.load_state(m)
         eq("loaded", (F2.count_found(), F2.describe(F2.found_at("af_d")), F2.found_at("af_d").how.place.x),
            (10, "bought from Sakharov in Cordon, near the village", 1.2))
+        eq("learned loaded", (F2.is_learned("af_k"), F2.is_learned("af_l"), F2.describe(F2.learned_at("af_l"))),
+           (True, True, "Sid asked in Cordon"))
         # a broken record: a string where a find should be, a number for a section
         bad = lua.eval("function() return { almanac = { v = 1, found = { af_a = 'x', [3] = {}, af_c = { y = 2012 } } } } end")()
         F3 = load(src)
