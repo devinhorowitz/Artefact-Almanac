@@ -27,5 +27,8 @@
   how (picked up, looted, bought, given, made at the Melter) and where, shown on its page, with a
   PDA message (MCM's "Messages" turns them off). Found artifacts stay known. They're kept in your
   save under the Almanac's own key; a save loads fine with the Almanac removed.
+- **Hearing of an artifact:** when the radio tells you a stalker found one, or a task asks you for
+  one, it stops being unknown, and its entry says who and where ("on the radio, Vasya found one
+  in Garbage, near the depot"; "Sakharov asked you for one"), with a PDA message.
 - **`tools/build.py`** checks the mod (scripts compile under LuaJIT 2.0, versions match, tests
   pass) and installs it into MO2.

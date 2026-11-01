@@ -44,7 +44,9 @@ MUTANTS = {
     "into_depth": ('u.depth == 1 and name or f("st_almanac_into_later", name)', "name"),
     "need_missing": ('for _, l in ipairs(count_lines(nd.missing, "warn")) do', 'for _, l in ipairs({}) do'),
     "sort_quotes": ("""return string.lower((name:gsub('^[%s"\\'\\171\\187]+', "")))""", "return string.lower(name)"),
-    "found_known": ("    if found(sec) then\n        return true\n    end\n", ""),
+    "found_known": ("    if found(sec) or learned(sec) then\n        return true\n    end\n", "    if learned(sec) then\n        return true\n    end\n"),
+    "learned_known": ("    if found(sec) or learned(sec) then\n", "    if found(sec) then\n"),
+    "heard_line": ("    elseif heard then\n", "    elseif false then\n"),
     "found_count": ("        if found(sec) then\n            n = n + 1\n", "        if true then\n            n = n + 1\n"),
     "group_hidden": ('        if total > 0 or g.id == "all" then\n', "        if true then\n"),
 }
@@ -110,15 +112,18 @@ CAT = {
 }
 CAT.order = { "a_junk", "b", "c", "j2", "k", "q", "w", "z" }
 almanac_data = { catalog = function() return CAT end }
-FOUND = {}
+FOUND, HEARD = {}, {}
 almanac_found = {
     is_found = function(sec) return FOUND[sec] ~= nil end,
     found_at = function(sec) return FOUND[sec] end,
+    is_learned = function(sec) return HEARD[sec] ~= nil end,
+    learned_at = function(sec) return HEARD[sec] end,
     date_of = function(at) return at.date end,
     describe = function(at) return at.how end,
 }
 STR.st_almanac_found_on = "Found %s: %s"
 STR.st_almanac_not_found = "Not found"
+STR.st_almanac_learned_on = "Heard of %s: %s"
 """
 
 
@@ -212,6 +217,13 @@ def main():
         eq("not found line", P.entry("b", carry_b).found[1], "Not found")
         eq("counts", list(P.counts(none)), [1, 7, 1])
         g.FOUND["z"] = None
+        # heard of without holding one: known, and the entry says so; a find comes first
+        g.HEARD["z"] = lua.table_from({"date": "15.05.2012", "how": "on the radio"})
+        eq("known by hearing", P.known("z", none), True)
+        eq("heard line", (P.entry("z", none).found[1], P.entry("z", none).found[2]), ("Heard of 15.05.2012: on the radio", "heading"))
+        g.FOUND["z"] = lua.table_from({"date": "16.05.2012", "how": "picked up"})
+        eq("a find first", P.entry("z", none).found[1], "Found 16.05.2012: picked up")
+        g.FOUND["z"], g.HEARD["z"] = None, None
         e = entry("c", lua.table_from({"c": 1}))
         B = dict(e["blocks"])
         eq("where c", B["st_almanac_h_where"], [("DAO: lvl3, lvl2", "body"), ("DAO anywhere", "body")])

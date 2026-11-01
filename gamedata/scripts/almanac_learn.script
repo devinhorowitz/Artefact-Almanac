@@ -1,0 +1,156 @@
+--[[
+Artefact Almanac: learning of an artifact without holding one. Each is kept by almanac_found.learn,
+once, with when, from whom and where, and only while the artifact isn't found.
+
+- The radio: when a stalker picks an artifact up, the game may put "found an artifact" news on his
+  faction's channel (dynamic_news_manager:FoundArtefact, from xr_gather_items). The news is queued
+  and reaches the player later, or never (a PDA out of charge, the channels quiet after a storm).
+  So the artifact is learned only when that message is sent to the player: FoundArtefact is
+  wrapped to note the queued message's text, and dynamic_news_helper.send_tip to catch it going
+  out. The place is where the stalker stood.
+- Tasks: a fetch task keeps what it asks for in the actor's var "<task id>_fetch". Every few seconds,
+  and at each load, the tasks the player has are read, and an artifact one asks for is learned,
+  from the task's giver.
+
+Both wrappers pass every argument through and give back every result, and stand aside when the
+script they wrap is missing.
+--]]
+
+VERSION = "0.1.0"
+
+CHECK_MS = 5000         -- how often the tasks are read
+MAX_PENDING = 64        -- queued radio messages remembered at most
+
+local pending, n_pending = {}, 0     -- a queued message's text -> { sec, who, place }
+local wrapped_news, wrapped_tip = false, false
+local next_check
+local first_read = true             -- the read after a load is quiet
+
+local function log(fmt, ...)
+    printf("[almanac-learn] " .. fmt, ...)
+end
+
+-- the radio's "found an artifact" news, once queued: its text, to catch when it's sent
+local function note(dnm, sender, itm)
+    local sec = itm and almanac_found.artifact_of(itm:section())
+    if not sec then
+        return
+    end
+    local q = dnm.queue and dnm.queue[sender:character_community()]
+    local e = q and q[1]
+    -- the news names its sender by his object, or by his id once dEmergence's news fixes have
+    -- swapped it in
+    if not (type(e) == "table" and e.Ty == "artifact" and (e.Id == sender or e.Id == sender:id()) and type(e.Mg) == "string") then
+        return
+    end
+    if n_pending >= MAX_PENDING then
+        pending, n_pending = {}, 0
+    end
+    if not pending[e.Mg] then
+        n_pending = n_pending + 1
+    end
+    pending[e.Mg] = { sec = sec, who = sender:character_name(), place = almanac_found.place_of(sender) }
+end
+
+function wrap_news()
+    local C = dynamic_news_manager and dynamic_news_manager.DynamicNewsManager
+    if wrapped_news or not (C and type(C.FoundArtefact) == "function") then
+        return wrapped_news
+    end
+    local orig = C.FoundArtefact
+    C.FoundArtefact = function(self, sender, itm, ...)
+        local res = { orig(self, sender, itm, ...) }
+        if res[1] == true then
+            local ok, err = pcall(note, self, sender, itm)
+            if not ok then
+                log("! the radio: %s", tostring(err))
+            end
+        end
+        return unpack(res)
+    end
+    wrapped_news = true
+    return true
+end
+
+function wrap_tip()
+    local H = dynamic_news_helper
+    if wrapped_tip or not (H and type(H.send_tip) == "function") then
+        return wrapped_tip
+    end
+    local orig = H.send_tip
+    H.send_tip = function(msg, ...)
+        local p = type(msg) == "string" and pending[msg] or nil
+        local res = { orig(msg, ...) }
+        if p then
+            pending[msg] = nil
+            n_pending = n_pending - 1
+            if res[1] ~= false then
+                local ok, err = pcall(almanac_found.learn, p.sec, { kind = "news", who = p.who, place = p.place })
+                if not ok then
+                    log("! the radio: %s", tostring(err))
+                end
+            end
+        end
+        return unpack(res)
+    end
+    wrapped_tip = true
+    return true
+end
+
+-- a task giver's name, or nil
+local function giver_name(id)
+    if not id then
+        return nil
+    end
+    local ok, name = pcall(function()
+        local o = level.object_by_id(id)
+        if o then
+            return o:character_name()
+        end
+        local se = alife():object(id)
+        return se and se:character_name()
+    end)
+    return ok and name or nil
+end
+
+-- the artifacts the player's tasks ask for, learned from their givers; quietly for the tasks
+-- already there at a load
+function read_tasks(quiet)
+    local tm = task_manager and task_manager.get_task_manager and task_manager.get_task_manager()
+    local info = tm and tm.task_info
+    if type(info) ~= "table" or not db.actor then
+        return 0
+    end
+    local n = 0
+    for task_id, t in pairs(info) do
+        local sec = load_var(db.actor, task_id .. "_fetch")
+        local a = type(sec) == "string" and almanac_found.artifact_of(sec)
+        if a and almanac_found.learn(a, { kind = "task", who = giver_name(type(t) == "table" and t.task_giver_id) }, quiet) then
+            n = n + 1
+        end
+    end
+    return n
+end
+
+local function actor_on_first_update()
+    wrap_news()
+    wrap_tip()
+    next_check = time_global() + 1000
+end
+
+local function actor_on_update()
+    if not next_check or time_global() < next_check then
+        return
+    end
+    next_check = time_global() + CHECK_MS
+    local ok, err = pcall(read_tasks, first_read)
+    first_read = false
+    if not ok then
+        log("! tasks: %s", tostring(err))
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+end

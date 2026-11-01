@@ -21,6 +21,15 @@
 	<string id="st_almanac_not_found">
 		<text>Not found yet</text>
 	</string>
+	<string id="st_almanac_learned_on">
+		<text>Heard of %s: %s</text>
+	</string>
+	<string id="st_almanac_got_news">
+		<text>on the radio, %s found one</text>
+	</string>
+	<string id="st_almanac_got_task">
+		<text>%s asked you for one</text>
+	</string>
 	<string id="st_almanac_in">
 		<text>in %s</text>
 	</string>
@@ -84,7 +93,7 @@
 		<text>Unknown artifact</text>
 	</string>
 	<string id="st_almanac_unknown_entry">
-		<text>You haven't come across this one yet. Once one is in your hands, or you've read about it in the PDA's Guide, it opens here.</text>
+		<text>You haven't come across this one yet. Once one is in your hands, you hear of one on the radio or a task asks for one, or you've read about it in the PDA's Guide, it opens here.</text>
 	</string>
 	<string id="st_almanac_kind_junk">
 		<text>Junk artifact</text>
