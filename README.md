@@ -31,8 +31,9 @@ kept in your save under the Almanac's own key; removing the mod leaves that key 
 loads as before.
 
 **Hearing of one.** You don't have to hold an artifact to learn of it: when the radio reports that a
-stalker found one, or one of your tasks asks you for one, it stops being unknown, and its entry says
-who and where.
+stalker found one, one of your tasks asks you for one, a dead stalker's PDA you pick up has notes on
+it, or an Ecologist tells you of it (ask them; once a day each), it stops being unknown, and its
+entry says who and where.
 
 **The in-game census** (`gamedata/scripts/almanac_census.script`, the only thing the mod holds so
 far). Once after each load, and once after each emission and psi storm, it counts every artifact the

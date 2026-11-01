@@ -30,6 +30,21 @@
 	<string id="st_almanac_got_task">
 		<text>%s asked you for one</text>
 	</string>
+	<string id="st_almanac_got_pda">
+		<text>read in the PDA of %s</text>
+	</string>
+	<string id="st_almanac_got_talk">
+		<text>%s told you of one</text>
+	</string>
+	<string id="st_almanac_talk_ask">
+		<text>Have your people learned anything new about artifacts?</text>
+	</string>
+	<string id="st_almanac_talk">
+		<text>We've been studying the %s. I'll send our notes to your PDA.</text>
+	</string>
+	<string id="st_almanac_talk_none">
+		<text>Nothing new I can tell you today.</text>
+	</string>
 	<string id="st_almanac_in">
 		<text>in %s</text>
 	</string>

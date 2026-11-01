@@ -38,5 +38,9 @@
 - **Hearing of an artifact:** when the radio tells you a stalker found one, or a task asks you for
   one, it stops being unknown, and its entry says who and where ("on the radio, Vasya found one
   in Garbage, near the depot"; "Sakharov asked you for one"), with a PDA message.
+- **PDAs and Ecologists:** a dead stalker's PDA you pick up has its owner's notes on one to three
+  artifacts you don't know (by its size), and any Ecologist will tell you of one, once a day each
+  ("Have your people learned anything new about artifacts?"); those found on the level you're on
+  come first.
 - **`tools/build.py`** checks the mod (scripts compile under LuaJIT 2.0, versions match, tests
   pass) and installs it into MO2.

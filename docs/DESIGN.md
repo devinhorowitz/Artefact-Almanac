@@ -181,7 +181,16 @@ queued and may never be sent, so the artifact is learned only once its message g
 `DynamicNewsManager:FoundArtefact` is wrapped to note the queued text, `dynamic_news_helper.send_tip`
 to catch it. Tasks are read every few seconds from the fetch item each keeps
 (`<task id>_fetch`), quietly at a load. Heard-of records sit beside the finds in
-`m_data.almanac.learned`. Still to come: Ecologist talks and looted PDAs.
+`m_data.almanac.learned`.
+
+**From a PDA and an Ecologist** (as Arsenal's intel reads them): a corpse's PDA the player picks up
+holds its owner's notes on as many artifacts as its size (common 1, uncommon 2, rare 3), once per
+PDA and owner (a mark on the object), an encrypted one once a technician decrypts it. A living
+Ecologist who isn't hostile offers a talk ("Have your people learned anything new about
+artifacts?", a dialog DXML adds to every character's list, which only Ecologists offer) and names
+one artifact, once a day each. Both tell of artifacts the player doesn't know that turn up
+somewhere, those the Zone makes on the player's level first. Immersive Identification stays a
+survey lead (1.1).
 
 **One entry per artifact** of kind `i_arty` or `i_arty_junk`, with its containers folded in. An
 artifact that never turns up short of console commands stays out of the counts, and the source

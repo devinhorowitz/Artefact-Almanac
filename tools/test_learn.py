@@ -7,7 +7,10 @@ learned only once it's sent to the player, from him, where he stood, whether the
 his object or his id (dEmergence's news fixes), and never when the news wasn't queued, was another
 stalker's, wasn't about an artifact, or failed to send; the pending messages are capped; a task asking
 for an artifact is learned from its giver, quietly at the read after a load, and a task asking for
-anything else isn't.
+anything else isn't. What a PDA or an Ecologist tells of: artifacts unknown and turning up, this
+level's first; a PDA as many as its size, once per owner, an encrypted one once decrypted (the
+decryption wrapped, its results passed through); an Ecologist (alive, not hostile) one a day, from
+him, picking again what the player has come to know.
 
     python test_learn.py            the real script
     python test_learn.py MUTANT     a broken copy (see MUTANTS); the run must fail
@@ -37,6 +40,18 @@ MUTANTS = {
     "task_quiet": ("pcall(read_tasks, first_read)", "pcall(read_tasks, false)"),
     "task_artifact": ('local a = type(sec) == "string" and almanac_found.artifact_of(sec)', "local a = sec"),
     "giver": ("who = giver_name(type(t) == \"table\" and t.task_giver_id)", "who = nil"),
+    "here_first": ("for _, t in ipairs({ here, elsewhere }) do", "for _, t in ipairs({ elsewhere, here }) do"),
+    "word_unknown": ("if not almanac_page.known(sec) and almanac_page.turns_up(a) then", "if almanac_page.turns_up(a) then"),
+    "word_turns_up": ("if not almanac_page.known(sec) and almanac_page.turns_up(a) then", "if not almanac_page.known(sec) then"),
+    "pda_once": ("    if se_load_var(id, obj:name(), READ) == who then\n        return 0\n    end\n", ""),
+    "pda_encrypted": ('    if info.state == "encrypted" then\n        return 0\n    end\n', ""),
+    "pda_size": ("for _, sec in ipairs(word_of(size, level.name())) do", "for _, sec in ipairs(word_of(1, level.name())) do"),
+    "decrypt_scan": ("        pcall(scan_pdas, false)\n", ""),
+    "talk_ecolog": ('npc:character_community() == "ecolog"', "true"),
+    "talk_daily": ("if not willing(npc) or se_load_var(npc:id(), npc:name(), TALKED) == day() then", "if not willing(npc) then"),
+    "talk_hostile": ("and not (npc.relation and npc:relation(db.actor) == game_object.enemy)", ""),
+    "talk_repick": ("if t and (t.who ~= whose(npc) or almanac_page.known(t.sec)) then", "if t and t.who ~= whose(npc) then"),
+    "talk_who": ('{ kind = "talk", who = npc:character_name(), place', '{ kind = "talk", who = nil, place'),
     "asking_artifact": ('if type(want) == "string" and almanac_found.artifact_of(want) == sec then',
                         'if type(want) == "string" then'),
 }
@@ -52,7 +67,7 @@ KIND = { af_a = "i_arty", af_b = "i_arty", af_c = "i_arty", af_d = "i_arty" }
 LEARNED, CALLS = {}, {}
 almanac_found = {
     artifact_of = function(sec) return KIND[sec] and sec or nil end,
-    place_of = function(o) return "place of " .. o.name end,
+    place_of = function(o) return "place of " .. (type(o.name) == "function" and o:name() or o.name) end,
     learn = function(sec, how, quiet)
         CALLS[#CALLS + 1] = { sec = sec, kind = how.kind, who = how.who, place = how.place, quiet = quiet }
         if LEARNED[sec] then return nil end
@@ -95,6 +110,50 @@ NOW = 0
 function time_global() return NOW end
 CALLBACKS = {}
 function RegisterScriptCallback(name, fn) CALLBACKS[name] = fn end
+-- what a PDA or an Ecologist can tell of: h1 and h2 the Zone makes on this level (a field, Dynamic
+-- Anomalies), e1 elsewhere, k1 known already, n1 turning up nowhere
+CAT = { order = { "e1", "h1", "h2", "k1", "n1" }, artifacts = {
+    h1 = { sec = "h1", name = "Aitch One", fields = { here = { 0.1 } }, dao = {} },
+    h2 = { sec = "h2", name = "Aitch Two", fields = {}, dao = { here = 0.5 } },
+    e1 = { sec = "e1", name = "Ee One", fields = { there = { 0.1 } }, dao = {} },
+    k1 = { sec = "k1", name = "Kay One", fields = { here = { 0.1 } }, dao = {} },
+    n1 = { sec = "n1", name = "En One", fields = {}, dao = {}, nowhere = true },
+} }
+almanac_data = { catalog = function() return CAT end }
+KNOWN = { k1 = true }
+almanac_page = { known = function(sec) return KNOWN[sec] == true or LEARNED[sec] == true end,
+                 turns_up = function(a) return not a.nowhere end }
+level.name = function() return "here" end
+SE = {}
+function se_load_var(id, name, key) return SE[id] and SE[id][key] end
+function se_save_var(id, name, key, v) SE[id] = SE[id] or {}; SE[id][key] = v end
+-- a PDA's owner as ui_pda_npc_tab registers it (none: nil), and its state
+function set_pda(id, owner, state)
+    SE[id] = SE[id] or {}
+    SE[id].info = owner and { contact = { name = owner, comm = "stalker", rank = "novice" }, state = state } or {}
+end
+function pda(id, sec) return { id = function() return id end, name = function() return "pda" .. id end,
+                               section = function() return sec end } end
+DATE = { 2012, 5, 14 }
+STR = { st_almanac_talk = "Studying %s", st_almanac_talk_none = "Nothing" }
+game = { get_game_time = function() return { get = function() return DATE[1], DATE[2], DATE[3] end } end,
+         translate_string = function(id) return STR[id] or id end }
+game_object = { enemy = 2 }
+AC_ID = 0
+db.actor.name = "actor"
+db.actor.id = function() return 0 end
+INV = {}
+db.actor.iterate_inventory = function(self, fn, actor) for i = 1, #INV do fn(actor, INV[i]) end end
+function npc(id, name, comm)
+    local o = { alive_v = true, rel = 1 }
+    o.id = function() return id end
+    o.name = function() return "npc" .. id end
+    o.character_name = function() return name end
+    o.character_community = function() return comm end
+    o.alive = function() return o.alive_v end
+    o.relation = function() return o.rel end
+    return o
+end
 """
 
 
@@ -202,6 +261,64 @@ def main():
         eq("next read", [c for c in calls()[before + 1:] if c[0] == "af_c"], [("af_c", "task", "Sidorovich", None, False)])
         # the page asks which of the player's tasks want an artifact now, and from whom
         eq("asking", [list(M.asking(s).values()) for s in ("af_b", "af_c", "af_a")], [["Sidorovich"], ["Sidorovich"], []])
+        # what a PDA or an Ecologist tells of: unknown, turning up, this level's first
+        w = list(M.word_of(10, "here").values())
+        eq("word: this level's first", (sorted(w[:2]), w[2:]), (["h1", "h2"], ["e1"]))
+        eq("word: one, this level's", list(M.word_of(1, "here").values())[0] in ("h1", "h2"), True)
+        eq("word: no level", sorted(M.word_of(10, None).values()), ["e1", "h1", "h2"])
+        # a PDA: its owner's notes on as many as its size, once; another owner's anew
+        before = len(calls())
+        g.set_pda(900, "Vasya", None)
+        p = g.pda(900, "itm_pda_uncommon")
+        eq("pda: its size", M.on_pda(p, False), 2)
+        new = calls()[before:]
+        eq("pda: from its owner, here first", (sorted(c[0] for c in new), {c[1:4] for c in new}),
+           (["h1", "h2"], {("pda", "Vasya", "place of actor")}))
+        eq("pda: once", M.on_pda(p, False), 0)
+        g.set_pda(900, "Petya", None)
+        eq("pda: another owner's", M.on_pda(p, False), 1)
+        # an encrypted one waits for the decryption, then is read; the decryption passes through
+        lua.execute("LEARNED = {}")
+        g.set_pda(901, "Ivan", "encrypted")
+        p2 = g.pda(901, "itm_pda_rare")
+        eq("pda: encrypted", M.on_pda(p2, False), 0)
+        g.INV[1] = p2
+        g.set_pda(901, "Ivan", None)
+        g.ui_pda_npc_tab = lua.eval("{ unlock_encrypted_pda = function(x) UNLOCKED = x return 'r1', 'r2' end }")
+        eq("decryption wrapped", M.wrap_decrypt(), True)
+        before = len(calls())
+        eq("decryption passes through", (g.ui_pda_npc_tab.unlock_encrypted_pda("v"), g.UNLOCKED), (("r1", "r2"), "v"))
+        eq("decrypted, read", sorted(c[0] for c in calls()[before:]), ["e1", "h1", "h2"])
+        g.set_pda(902, None, None)
+        eq("pda: no owner", M.on_pda(g.pda(902, "itm_pda_common"), False), 0)
+        eq("not a pda", M.on_pda(g.pda(903, "wpn_pm"), False), 0)
+        # an Ecologist: one a day, from him, this level's first
+        lua.execute("LEARNED = {}")
+        actor, eco = g.db.actor, g.npc(50, "Kruglov", "ecolog")
+        eq("talk: an Ecologist", M.talk_ok(actor, eco), True)
+        eq("talk: names one, this level's", M.talk_text(actor, eco) in ("Studying Aitch One", "Studying Aitch Two"), True)
+        before = len(calls())
+        M.talk_told(actor, eco)
+        eq("talk: learned from him", [c[1:4] for c in calls()[before:]], [("talk", "Kruglov", "place of npc50")])
+        eq("talk: once a day", M.talk_ok(actor, eco), False)
+        g.DATE[3] = 15
+        eq("talk: the next day", M.talk_ok(actor, eco), True)
+        # what he'd tell, come to know since, he picks again
+        first = M.talk_text(actor, eco)
+        names = {"Studying Aitch One": "h1", "Studying Aitch Two": "h2", "Studying Ee One": "e1"}
+        g.LEARNED[names[first]] = True
+        M.talk_ok(actor, eco)
+        eq("talk: picks again", M.talk_text(actor, eco) != first, True)
+        eq("talk: not a Loner", M.talk_ok(actor, g.npc(51, "Vasya", "stalker")), False)
+        hostile = g.npc(52, "Nikolai", "ecolog")
+        hostile.rel = 2
+        eq("talk: not when hostile", M.talk_ok(actor, hostile), False)
+        dead = g.npc(53, "Semen", "ecolog")
+        dead.alive_v = False
+        eq("talk: not dead", M.talk_ok(actor, dead), False)
+        lua.execute("LEARNED = { h1 = true, h2 = true, e1 = true }")
+        other = g.npc(54, "Ozersky", "ecolog")
+        eq("talk: nothing new", (M.talk_ok(actor, other), M.talk_text(actor, other)), (False, "Nothing"))
         # nothing to wrap: the wrappers stand aside
         g.dynamic_news_manager = None
         M2 = load(src)

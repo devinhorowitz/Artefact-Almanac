@@ -178,10 +178,10 @@ function place_text(place, lvl)
     return lvl and string.format(T("st_almanac_in"), T(lvl)) or ""
 end
 
--- the ways a find can come, and whether its words name someone; news and task are how an
--- artifact is heard of (learn)
+-- the ways a find can come, and whether its words name someone; news, task, pda and talk are how
+-- an artifact is heard of (learn)
 local WAYS = { stash = false, ground = false, craft = false, carried = false, loot = false,
-               body = true, trade = true, gift = true, news = true, task = true }
+               body = true, trade = true, gift = true, news = true, task = true, pda = true, talk = true }
 
 -- how and where a find came, in words ("bought from Sakharov in Yantar, ..."); the level alone for
 -- a find with no how
