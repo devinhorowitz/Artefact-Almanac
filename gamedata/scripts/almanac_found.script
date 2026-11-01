@@ -1,0 +1,289 @@
+--[[
+Artefact Almanac: finds. An artifact counts as found the first time one enters the player's
+inventory, however it got there: picked up, looted from a stash or a body, bought, given, made at
+the Artefact Melter, or already carried when a save loads. A container holding one (a lead box, the
+belt containers) counts as the artifact inside. The set only grows: dropping, selling or melting one
+changes nothing.
+
+A find keeps when, where and how; the place is put into words only when shown, by the game's own
+news helper ("in Cordon, near the rookie village"), so it follows the language. A new find is a PDA
+message unless MCM's "Messages" is off.
+
+Saved with the game under its own key, m_data.almanac, plain values only, with a schema version.
+The engine sends no actor_on_item_take for what the player already carries when a save loads, so the
+inventory is scanned on the first update instead, quietly. Removing the mod leaves the key unread in
+the save, nothing else.
+--]]
+
+SCHEMA = 1
+
+local KINDS = { i_arty = true, i_arty_junk = true }
+
+local found = {}        -- section -> { y, mo, d, h, mi, lvl, how = { kind, who, place } }
+local scanned = false   -- the load-time scan has run; messages only after it
+
+local function T(id)
+    return game.translate_string(id)
+end
+
+-- the artifact a section is, or the one a container of it holds; nil for anything else
+function artifact_of(sec)
+    local kind = SYS_GetParam(0, sec, "kind", "")
+    if KINDS[kind] then
+        return sec
+    end
+    if kind == "i_arty_cont" then
+        local held = almanac_data.held_by(sec)
+        if held ~= sec and KINDS[SYS_GetParam(0, held, "kind", "")] then
+            return held
+        end
+    end
+    return nil
+end
+
+local function stamp()
+    local y, mo, d, h, mi = game.get_game_time():get()
+    return { y = y, mo = mo, d = d, h = h, mi = mi, lvl = level.name() }
+end
+
+-- MCM's "Messages": on unless turned off
+function news()
+    local ok, v = pcall(function() return ui_mcm and ui_mcm.get("almanac/news") end)
+    return not (ok and v == false)
+end
+
+local function name_of(sec)
+    local n = ini_sys:r_string_ex(sec, "inv_name")
+    return n and T(n) or sec
+end
+
+-- one PDA message for the artifacts found at once
+local function notify(list)
+    if not db.actor or #list == 0 then
+        return
+    end
+    local names = {}
+    for i, sec in ipairs(list) do
+        names[i] = name_of(sec)
+    end
+    local text = string.format(T("st_almanac_new_entry"), table.concat(names, ", "))
+    if not news() then
+        printf("[almanac] PDA (silenced): %s", text)
+        return
+    end
+    db.actor:give_game_news(T("st_almanac_title"), text, "ui_inGame2_Predmet_poluchen", 0, 5000, 0)
+end
+
+-- count a section as found, with how (a table, or a function that makes it, run only for a new
+-- find); returns the artifact when it's a new find
+function mark(sec, quiet, how)
+    local a = artifact_of(sec)
+    if not a or found[a] then
+        return nil
+    end
+    local at = stamp()
+    if type(how) == "function" then
+        how = how()
+    end
+    at.how = how
+    found[a] = at
+    if not quiet then
+        notify({ a })
+    end
+    return a
+end
+
+function is_found(sec)
+    return found[sec] ~= nil
+end
+
+-- when, where and how an artifact was found: { y, mo, d, h, mi, lvl, how }, or nil
+function found_at(sec)
+    return found[sec]
+end
+
+-- how many of a list of sections are found (all of them without a list)
+function count_found(list)
+    local n = 0
+    if list then
+        for _, sec in ipairs(list) do
+            if found[sec] then
+                n = n + 1
+            end
+        end
+    else
+        for _ in pairs(found) do
+            n = n + 1
+        end
+    end
+    return n
+end
+
+-- where an object is: { gv, x, y, z }, or nil
+function place_of(obj)
+    if not obj then
+        return nil
+    end
+    local ok, gv, pos = pcall(function() return obj:game_vertex_id(), obj:position() end)
+    if not (ok and gv and pos) then
+        return nil
+    end
+    local function r(n)
+        return math.floor(n * 10 + 0.5) / 10
+    end
+    return { gv = gv, x = r(pos.x), y = r(pos.y), z = r(pos.z) }
+end
+
+-- a place in words: "in Cordon, near the rookie village"; "in Cordon" when the level is all that
+-- is known, or the vertex no longer lies on it (another mod list); "" when nothing is
+function place_text(place, lvl)
+    local gg = place and place.gv and game_graph and game_graph()
+    if gg and gg:valid_vertex_id(place.gv) then
+        local on = alife():level_name(gg:vertex(place.gv):level_id())
+        if not lvl or on == lvl then
+            local ok, s = pcall(dynamic_news_helper.GetPointDescription,
+                { m_game_vertex_id = place.gv, position = vector():set(place.x, place.y, place.z) })
+            s = ok and type(s) == "string" and s:gsub("[,%s]+$", "") or nil
+            if s and s ~= "" and not s:find("st_dyn", 1, true) then
+                return s
+            end
+        end
+    end
+    return lvl and string.format(T("st_almanac_in"), T(lvl)) or ""
+end
+
+-- the ways a find can come, and whether its words name someone
+local WAYS = { stash = false, ground = false, craft = false, carried = false, loot = false,
+               body = true, trade = true, gift = true }
+
+-- how and where a find came, in words ("bought from Sakharov in Yantar, ..."); the level alone for
+-- a find with no how
+function describe(at)
+    if not at then
+        return ""
+    end
+    local how = at.how
+    local named = how and WAYS[how.kind]
+    if named == nil then
+        return at.lvl and T(at.lvl) or ""
+    end
+    local s = T("st_almanac_got_" .. how.kind)
+    if named then
+        s = string.format(s, (how.who and how.who ~= "") and how.who or T("st_almanac_by_someone"))
+    end
+    local p = place_text(how.place, at.lvl)
+    return p ~= "" and (s .. " " .. p) or s
+end
+
+-- a find's date, as the PDA writes dates
+function date_of(at)
+    return string.format("%02d.%02d.%04d", at.d or 0, at.mo or 0, at.y or 0)
+end
+
+local function living(gui, partner)
+    return gui.npc_is_companion == true or (partner.alive ~= nil and partner:alive() == true)
+end
+
+-- how an item the player just took came: from the window that's open, the Melter's, a talk, or
+-- the ground
+local function take_source()
+    local gui = ui_inventory and ui_inventory.GUI
+    if gui and gui:IsShown() and (gui.mode == "loot" or gui.mode == "trade") then
+        local ok, partner = pcall(gui.GetPartner, gui)
+        if ok and partner then
+            local place = place_of(partner)
+            if gui.mode == "trade" then
+                return { kind = "trade", who = partner:character_name(), place = place }
+            elseif gui.npc_is_box then
+                return { kind = "stash", place = place }
+            elseif IsStalker(partner) and living(gui, partner) then
+                return { kind = "gift", who = partner:character_name(), place = place }
+            elseif IsStalker(partner) then
+                return { kind = "body", who = partner:character_name(), place = place }
+            end
+            return { kind = "loot", place = place }
+        end
+    end
+    local ws = ui_workshop and ui_workshop.GUI
+    if ws and ws:IsShown() then
+        return { kind = "craft", place = place_of(db.actor) }
+    end
+    if db.actor:is_talking() then
+        local npc = get_speaker and get_speaker(true)
+        return { kind = "gift", who = npc and npc:character_name(), place = place_of(npc or db.actor) }
+    end
+    return { kind = "ground", place = place_of(db.actor) }
+end
+
+local function carried()
+    return { kind = "carried", place = place_of(db.actor) }
+end
+
+local function scan()
+    if not db.actor then
+        return
+    end
+    db.actor:iterate_inventory(function(_, obj)
+        if obj then
+            mark(obj:section(), true, carried)
+        end
+    end, db.actor)
+end
+
+local function actor_on_first_update()
+    scan()
+    scanned = true
+end
+
+local function actor_on_item_take(obj)
+    if obj then
+        mark(obj:section(), not scanned, scanned and take_source or carried)
+    end
+end
+
+-- only plain values go into the save; a record that isn't one is left out
+local function plain(at)
+    if type(at) ~= "table" then
+        return nil
+    end
+    local out = {}
+    for _, k in ipairs({ "y", "mo", "d", "h", "mi" }) do
+        out[k] = tonumber(at[k]) or 0
+    end
+    out.lvl = type(at.lvl) == "string" and at.lvl or nil
+    local how = type(at.how) == "table" and at.how or nil
+    if how then
+        local p = type(how.place) == "table" and how.place or nil
+        out.how = { kind = tostring(how.kind), who = type(how.who) == "string" and how.who or nil,
+                    place = p and { gv = tonumber(p.gv), x = tonumber(p.x), y = tonumber(p.y), z = tonumber(p.z) } or nil }
+    end
+    return out
+end
+
+local function save_state(m_data)
+    local f = {}
+    for sec, at in pairs(found) do
+        f[sec] = plain(at)
+    end
+    m_data.almanac = { v = SCHEMA, found = f }
+end
+
+local function load_state(m_data)
+    local d = m_data.almanac
+    found = {}
+    if type(d) == "table" and type(d.found) == "table" then
+        for sec, at in pairs(d.found) do
+            if type(sec) == "string" then
+                found[sec] = plain(at)
+            end
+        end
+    end
+    scanned = false
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("actor_on_item_take", actor_on_item_take)
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
+end

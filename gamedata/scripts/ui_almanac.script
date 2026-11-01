@@ -92,8 +92,8 @@ end
 -- everything afresh: what's carried, the counts, the groups, the artifacts, the entry
 function AlmanacPage:Fill()
     almanac_page.set_have(almanac_trees.carried())
-    local k, n = almanac_page.counts()
-    self.known_count:SetText(string.format(game.translate_string("st_almanac_known_count"), k, n))
+    local k, n, found = almanac_page.counts()
+    self.known_count:SetText(string.format(game.translate_string("st_almanac_known_count"), k, n, found))
     self.jailbreak_lbl:Show(almanac_page.jailbreak())
     -- Back to Mod App Creator's launcher, in the PDA while the page has its tile
     self.btn_back:Show(not self.flat and almanac_tab.back_to_launcher())
@@ -259,6 +259,9 @@ function AlmanacPage:ShowEntry(sec)
         y = y + 1 + GAP
     end
     line("entry_name", e.name)
+    if e.found then
+        line("entry_line", e.found[1], e.found[2])
+    end
     if e.kind then
         line("entry_line", e.kind, "dim")
     end

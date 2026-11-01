@@ -3,8 +3,8 @@ Artefact Almanac: what the page shows, as text, built from the catalog (almanac_
 trees (almanac_trees), so it can be tested away from the UI; ui_almanac.script only lays it out.
 Every word is a string id.
 
-What the player knows, for now: an artifact they carry, one whose PDA Guide article is open, or
-everything with MCM's jailbreak. An unknown artifact is listed as unknown, and only once some way of
+What the player knows: an artifact they have found (almanac_found: one has been in their
+inventory), one they carry, one whose PDA Guide article is open, or everything with MCM's jailbreak. An unknown artifact is listed as unknown, and only once some way of
 the Zone makes it (a field, Dynamic Anomalies, a recipe); a known one is always listed.
 
     almanac_page.groups()            the left column: { { id, name, known, total }, ... }
@@ -43,9 +43,17 @@ function jailbreak()
     return ok and v == true
 end
 
--- whether the player knows an artifact: the jailbreak, carrying one, or its Guide article open
+function found(sec)
+    return almanac_found ~= nil and almanac_found.is_found(sec) == true
+end
+
+-- whether the player knows an artifact: the jailbreak, a find, carrying one, or its Guide article
+-- open
 function known(sec, have)
     if jailbreak() then
+        return true
+    end
+    if found(sec) then
         return true
     end
     if have and (have[sec] or 0) > 0 then
@@ -372,6 +380,13 @@ function entry(sec, have)
     local e = { sec = sec, known = true, name = a.name, kind = kind_line(a),
                 weight = a.weight and f("st_almanac_weight", string.format("%.2f", a.weight)) or nil,
                 description = t(ini_sys:r_string_ex(sec, "description") or ""), blocks = {} }
+    -- when, how and where it was found, or that it hasn't been
+    local at = almanac_found and almanac_found.found_at(sec)
+    if at then
+        e.found = { f("st_almanac_found_on", almanac_found.date_of(at), almanac_found.describe(at)), "good" }
+    else
+        e.found = { t("st_almanac_not_found"), "dim" }
+    end
     local function put(b)
         if b then
             e.blocks[#e.blocks + 1] = b
@@ -386,8 +401,14 @@ function entry(sec, have)
     return e
 end
 
--- the header's count: known of listed
+-- the header's counts: known of listed, and how many found
 function counts(have)
     local g = groups(have)[1]
-    return g.known, g.total
+    local n = 0
+    for sec in pairs(almanac_data.catalog().artifacts) do
+        if found(sec) then
+            n = n + 1
+        end
+    end
+    return g.known, g.total, n
 end

@@ -10,6 +10,7 @@ function on_mcm_load()
             { id = "title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_menu_almanac",
               size = { 512, 50 }, spacing = 20 },
             { id = "jailbreak", type = "check", val = 1, def = false },
+            { id = "news", type = "check", val = 1, def = true },
             { id = "tab_key", type = "key_bind", val = 2, def = -1 },
             { id = "about", type = "desc", text = "ui_mcm_almanac_about" },
         },

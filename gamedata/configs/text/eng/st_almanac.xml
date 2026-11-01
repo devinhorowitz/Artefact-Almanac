@@ -10,7 +10,46 @@
 		<text>Back</text>
 	</string>
 	<string id="st_almanac_known_count">
-		<text>Known: %s of %s</text>
+		<text>Known: %s of %s. Found: %s</text>
+	</string>
+	<string id="st_almanac_new_entry">
+		<text>New in the Almanac: %s</text>
+	</string>
+	<string id="st_almanac_found_on">
+		<text>Found %s: %s</text>
+	</string>
+	<string id="st_almanac_not_found">
+		<text>Not found yet</text>
+	</string>
+	<string id="st_almanac_in">
+		<text>in %s</text>
+	</string>
+	<string id="st_almanac_by_someone">
+		<text>someone</text>
+	</string>
+	<string id="st_almanac_got_stash">
+		<text>looted from a stash</text>
+	</string>
+	<string id="st_almanac_got_body">
+		<text>taken from the body of %s</text>
+	</string>
+	<string id="st_almanac_got_trade">
+		<text>bought from %s</text>
+	</string>
+	<string id="st_almanac_got_gift">
+		<text>given to you by %s</text>
+	</string>
+	<string id="st_almanac_got_ground">
+		<text>picked up</text>
+	</string>
+	<string id="st_almanac_got_craft">
+		<text>made at the Artefact Melter</text>
+	</string>
+	<string id="st_almanac_got_carried">
+		<text>already in your pack</text>
+	</string>
+	<string id="st_almanac_got_loot">
+		<text>looted</text>
 	</string>
 	<string id="st_almanac_credit">
 		<text>Artefact Almanac %s</text>
@@ -45,7 +84,7 @@
 		<text>Unknown artifact</text>
 	</string>
 	<string id="st_almanac_unknown_entry">
-		<text>You haven't come across this one yet. Hold one, or read about it in the PDA's Guide, and it opens here.</text>
+		<text>You haven't come across this one yet. Once one is in your hands, or you've read about it in the PDA's Guide, it opens here.</text>
 	</string>
 	<string id="st_almanac_kind_junk">
 		<text>Junk artifact</text>
@@ -145,7 +184,13 @@
 		<text>Show everything</text>
 	</string>
 	<string id="ui_mcm_almanac_jailbreak_desc">
-		<text>Every artifact opens in the Almanac at once, known or not. Off, an artifact opens once you hold one or read about it in the PDA's Guide.</text>
+		<text>Every artifact opens in the Almanac at once, known or not. Off, an artifact opens once one has been in your hands or you've read about it in the PDA's Guide.</text>
+	</string>
+	<string id="ui_mcm_almanac_news">
+		<text>Messages</text>
+	</string>
+	<string id="ui_mcm_almanac_news_desc">
+		<text>A PDA message when an artifact you hadn't found before comes into your hands.</text>
 	</string>
 	<string id="ui_mcm_almanac_pda_tab">
 		<text>Its own PDA tab</text>
