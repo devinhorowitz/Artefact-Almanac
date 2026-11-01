@@ -8,8 +8,8 @@
 - textures/ui/almanac_px.dds: 4x4 white, tinted by the page for rules and panels.
 - textures/ui/almanac_marks.dds: the group tabs' marks, white outlined in black so the page can
   tint them, 64x64 each, left to right: all (the tile's crystal in its ring), junk (a pitted stone:
-  junk carries no tier mark), tiers 2 to 5 (one to four chevrons, as GRIP marks an artifact's tier
-  on its icon), other (a dashed ring); the last cell is left clear for the tabs' buttons, which
+  junk carries no tier mark), tiers 1 to 4 as the game shows them (N chevrons for tier N, as GRIP
+  marks an artifact's tier on its icon), other (a dashed ring); the last cell is left clear for the tabs' buttons, which
   only take the clicks (a 3t button keeps its texture at its XML size, so the page draws the tabs'
   panels itself).
 
@@ -32,7 +32,7 @@ STATES = {                            # quadrant origin -> color
 }
 SS = 4                                # supersampling for smooth edges
 MARK = 64                             # a mark's cell in almanac_marks.dds
-MARKS = ["all", "junk", "t2", "t3", "t4", "t5", "other"]
+MARKS = ["all", "junk", "t1", "t2", "t3", "t4", "other"]
 
 
 def shape():
@@ -83,8 +83,8 @@ def mark_mask(name):
             c.line(s(32, 32, 32 + 30 * math.cos(a), 32 + 30 * math.sin(a)), fill=255, width=5 * SS)
         m = ImageChops.subtract(m, cut)
     else:
-        # tier N: N - 1 chevrons stacked, pointing up
-        count = int(name[1:]) - 1
+        # tier N: N chevrons stacked, pointing up
+        count = int(name[1:])
         w, h, step = 40, 14, 11
         top = (MARK - (h + (count - 1) * step)) / 2
         for i in range(count):

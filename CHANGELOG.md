@@ -18,10 +18,10 @@
 - **The crafting trees** (`almanac_trees.script`): any artifact's tree down to the artifacts nothing
   makes and the mutant parts, what it goes into, the totals for one, and what one more takes when
   what you carry is used first, with the workshop's own rules for amounts and books.
-- **The page:** the Almanac in your PDA: tabs across the top for all, junk and each tier (marked
-  with the chevrons GRIP's icons give that tier) with how many you know, the artifacts, and
-  each one's entry with the inventory's stat card, detectors, where the Zone makes it, its recipe,
-  what it goes into, and how much you still need. Open it from Mod App Creator's tile, its own PDA
+- **The page:** the Almanac in your PDA: tabs across the top for all, junk and tiers 1 to 4,
+  numbered and marked as the game shows them (tier N has N chevrons, as on its icons), with how
+  many you know, the artifacts, and each one's entry with the inventory's stat card, detectors,
+  where the Zone makes it, its recipe, what it goes into, and how much you still need. Open it from Mod App Creator's tile, its own PDA
   tab, or a key that opens it flat (MCM). Artifacts you haven't met stay unknown unless MCM's "Show
   everything" is on.
 - **Finds:** the first time an artifact comes into your hands, the Almanac remembers it: the date,

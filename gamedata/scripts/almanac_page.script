@@ -15,11 +15,12 @@ the Zone makes it (a field, Dynamic Anomalies, a recipe); a known one is always 
 
 VERSION = "0.1.0"
 
--- the left column's groups, in order: every artifact, then junk, then each tier, then the rest
+-- the page's tabs, in order: every artifact, then junk, then each tier as the game shows it, then
+-- the rest. A group's tier is the configs' (see shown_tier): tier 1 holds the configs' tier 2
 GROUPS = {
     { id = "all" },
     { id = "junk", kind = "i_arty_junk" },
-    { id = "t2", tier = 2 }, { id = "t3", tier = 3 }, { id = "t4", tier = 4 }, { id = "t5", tier = 5 },
+    { id = "t1", tier = 2 }, { id = "t2", tier = 3 }, { id = "t3", tier = 4 }, { id = "t4", tier = 5 },
     { id = "other" },
 }
 MAX_LEVELS = 8      -- levels a "where" line names before "and N more"
@@ -205,12 +206,21 @@ local function by_weight(weights)
     return names
 end
 
+-- an artifact's tier as the game shows it: the configs' less one (Perk-Based Artefacts lowers every
+-- tier of 2 or more by one, and GRIP's icons carry that many chevrons); junk shows none
+function shown_tier(a)
+    if a.kind ~= "i_arty_junk" and a.tier and a.tier >= 2 then
+        return a.tier - 1
+    end
+end
+
 -- the kind and tier line
 function kind_line(a)
     if a.kind == "i_arty_junk" then
-        return a.tier and f("st_almanac_kind_junk_tier", a.tier) or t("st_almanac_kind_junk")
+        return t("st_almanac_kind_junk")
     end
-    return a.tier and f("st_almanac_kind_arty_tier", a.tier) or t("st_almanac_kind_arty")
+    local n = shown_tier(a)
+    return n and f("st_almanac_kind_arty_tier", n) or t("st_almanac_kind_arty")
 end
 
 local function detectors_block(C, a)
