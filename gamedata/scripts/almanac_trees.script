@@ -1,0 +1,211 @@
+--[[
+Artefact Almanac: the crafting trees.
+
+Read from the catalog (almanac_data): what an artifact is made from, down to the artifacts nothing
+makes and the mutant parts; what it goes into, up to the top; how much a craft takes in all, and
+how much of that the player still lacks. A step takes the first recipe that makes its artifact, as
+tools/census.py expands it. Amounts are the workshop's: over 4, one less with the "artificer
+eagerness" achievement. Nothing here is saved or changed.
+
+    almanac_trees.down(sec)            the tree under an artifact, a node per step
+    almanac_trees.up(sec)              the artifacts it goes into, nearest first
+    almanac_trees.totals(sec)          crafts, books, bottom artifacts and parts for one
+    almanac_trees.need(sec, have)      the same, using what `have` holds first, and what's missing
+    almanac_trees.carried()            the player's inventory as { section = count }
+    almanac_trees.book_known(book)     whether the workshop would let the player use a book
+--]]
+
+VERSION = "0.1.0"
+
+local KIND_JUNK = "i_arty_junk"
+
+-- the catalog's recipes by key, kept per catalog
+local index = setmetatable({}, { __mode = "k" })
+
+local function cat()
+    return almanac_data.catalog()
+end
+
+local function recipes_by_key(C)
+    local t = index[C]
+    if not t then
+        t = {}
+        for _, r in ipairs(C.recipes) do
+            t[r.key] = r
+        end
+        index[C] = t
+    end
+    return t
+end
+
+-- the recipe a tree takes for an artifact: the first that makes it
+function recipe_for(sec, C)
+    C = C or cat()
+    local a = C.artifacts[sec]
+    local key = a and a.made_by[1]
+    return key and recipes_by_key(C)[key] or nil
+end
+
+-- an amount as the workshop asks it
+function amount(n, eager)
+    if eager and n > 4 then
+        return n - 1
+    end
+    return n
+end
+
+-- whether the player has the "artificer eagerness" achievement
+function eager_now()
+    return game_achievements and game_achievements.has_achievement("artificer_eagerness") and true or false
+end
+
+-- the tree under an artifact: { sec, n, recipe, book, parts = { node, ... } } for one of it; a
+-- part that is an artifact some recipe makes has its own tree, anything else is a leaf; a loop
+-- stops at the artifact it would repeat
+function down(sec, eager, C, n, path)
+    C = C or cat()
+    n = n or 1
+    path = path or {}
+    local node = { sec = sec, n = n, parts = {} }
+    local r = recipe_for(sec, C)
+    if not r or path[sec] then
+        node.loop = path[sec] or nil
+        return node
+    end
+    node.recipe, node.book = r.key, r.book
+    path[sec] = true
+    for _, p in ipairs(r.parts) do
+        local k = amount(p[2], eager) * n
+        if C.artifacts[p[1]] then
+            node.parts[#node.parts + 1] = down(p[1], eager, C, k, path)
+        else
+            node.parts[#node.parts + 1] = { sec = p[1], n = k, parts = {} }
+        end
+    end
+    path[sec] = nil
+    return node
+end
+
+local function add(t, k, n)
+    t[k] = (t[k] or 0) + n
+end
+
+-- crafts, books, bottom artifacts and parts for one of an artifact; nil when nothing makes it
+function totals(sec, eager, C)
+    C = C or cat()
+    if not recipe_for(sec, C) then
+        return nil
+    end
+    local t = { crafts = 0, books = {}, artifacts = {}, parts = {}, junk = 0, part_count = 0 }
+    local function walk(node)
+        if node.recipe then
+            t.crafts = t.crafts + node.n
+            t.books[node.book] = true
+            for _, child in ipairs(node.parts) do
+                walk(child)
+            end
+        elseif C.artifacts[node.sec] then
+            add(t.artifacts, node.sec, node.n)
+            if C.artifacts[node.sec].kind == KIND_JUNK then
+                t.junk = t.junk + node.n
+            end
+        else
+            add(t.parts, node.sec, node.n)
+            t.part_count = t.part_count + node.n
+        end
+    end
+    walk(down(sec, eager, C))
+    return t
+end
+
+-- the artifacts an artifact goes into, nearest first: { { sec, via = recipe key, depth }, ... }
+function up(sec, C)
+    C = C or cat()
+    local by_key = recipes_by_key(C)
+    local out, seen, frontier, depth = {}, { [sec] = true }, { sec }, 0
+    while #frontier > 0 do
+        depth = depth + 1
+        local nxt = {}
+        for _, s in ipairs(frontier) do
+            local a = C.artifacts[s]
+            for _, key in ipairs(a and a.used_in or {}) do
+                local res = by_key[key] and by_key[key].result
+                if res and C.artifacts[res] and not seen[res] then
+                    seen[res] = true
+                    out[#out + 1] = { sec = res, via = key, depth = depth }
+                    nxt[#nxt + 1] = res
+                end
+            end
+        end
+        frontier = nxt
+    end
+    return out
+end
+
+-- what one more of an artifact takes when `have` ({ section = count }) is used first: an
+-- artifact the player holds is used as it is, else crafted, else missing; parts are taken from
+-- `have` and the rest is missing. `have` itself isn't changed.
+-- { crafts, books, used = { sec = n }, missing = { sec = n }, missing_count, done = bool }
+function need(sec, have, eager, C)
+    C = C or cat()
+    if not recipe_for(sec, C) then
+        return nil
+    end
+    local left = {}
+    for k, v in pairs(have or {}) do
+        left[k] = v
+    end
+    local t = { crafts = 0, books = {}, used = {}, missing = {}, missing_count = 0 }
+    local function take(s, n)
+        local got = math.min(left[s] or 0, n)
+        if got > 0 then
+            left[s] = left[s] - got
+            add(t.used, s, got)
+        end
+        return n - got
+    end
+    local function want(s, n, path, top)
+        if not top then
+            n = take(s, n)
+            if n == 0 then
+                return
+            end
+        end
+        local r = C.artifacts[s] and not path[s] and recipe_for(s, C)
+        if not r then
+            add(t.missing, s, n)
+            t.missing_count = t.missing_count + n
+            return
+        end
+        t.crafts = t.crafts + n
+        t.books[r.book] = true
+        path[s] = true
+        for _, p in ipairs(r.parts) do
+            want(p[1], amount(p[2], eager) * n, path)
+        end
+        path[s] = nil
+    end
+    want(sec, 1, {}, true)
+    t.done = t.missing_count == 0
+    return t
+end
+
+-- the player's inventory as { section = count }
+function carried()
+    local t = {}
+    if db.actor then
+        db.actor:iterate_inventory(function(_, item)
+            add(t, item:section(), 1)
+        end)
+    end
+    return t
+end
+
+-- whether the workshop would let the player use a book: a book item once its note is read; a
+-- recipe set that is no item (recipe_basic_0 and the like) from the start
+function book_known(book)
+    if not ini_sys:section_exist(book) then
+        return true
+    end
+    return ui_pda_encyclopedia_tab.is_unlocked_note("encyclopedia__notes_" .. book) and true or false
+end

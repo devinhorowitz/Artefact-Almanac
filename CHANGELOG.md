@@ -15,5 +15,8 @@
   artifacts with containers, tiers and detectors, the workshop's recipes, each level's fields from
   the anomaly zones' own spawn settings, and Dynamic Anomalies' lists. `tools/catalog_lua.py` runs it
   over an install's configs and compares it with the offline census, answer for answer.
+- **The crafting trees** (`almanac_trees.script`): any artifact's tree down to the artifacts nothing
+  makes and the mutant parts, what it goes into, the totals for one, and what one more takes when
+  what you carry is used first, with the workshop's own rules for amounts and books.
 - **`tools/build.py`** checks the mod (scripts compile under LuaJIT 2.0, versions match, tests
   pass) and installs it into MO2.
