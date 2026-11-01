@@ -13,8 +13,8 @@ craft higher tier artefact, along with some sort of "detector" or survery functi
 reputation, so you get a hint or some sort of short term notice that an artefact you want couple
 be in a particular region without making it easy."
 
-This is a plan, not a manual. What exists today is a read-only census of this install
-(`tools/census.py`).
+This is a plan, not a manual. What exists today is two read-only censuses: one of an install's
+configs (`tools/census.py`) and one of the running game's artifacts (`almanac_census.script`).
 
 ## Decisions (2026-11-01)
 
@@ -81,6 +81,17 @@ install on 2026-11-01. Facts marked *inference* weren't checked in game.
 
   The census's source map lists each one's mentions; each needs a look before it leaves the
   counts.
+
+**The in-game census** (`almanac_census.script`), first run on 2026-11-01 on a save in Darkscape:
+- The whole alife held 41 artifacts. 3 lay free on the player's level, all from its fields; 23 lay
+  free on four other levels; 15 were owned (stalkers 10, boxes 5).
+- 12 of the 23 elsewhere were 5 game days old or more, so the despawner would release them the
+  moment the player arrived.
+- Who spawned a free artifact is known only on the loaded level: field ids come from its zone
+  binders, and Dynamic Anomalies tracked none at that point.
+- Every level but the current one was due its post-emission roll, underground ones included
+  (their weathers are `w_indoor_*`, and the base code skips only `indoor`).
+- A full sweep of the alife's 65,534 ids took about 30 ms.
 
 ## Prior art
 
@@ -153,7 +164,8 @@ keep it (`arsenal_where`: a game vertex and position, worded by `GetPointDescrip
 - *"There is one":* an unowned artifact of that kind lies on a level now. An id sweep like the
   despawner's finds them, on demand or once a game hour. Fields and Dynamic Anomalies spawn only
   on the player's level (others roll on arrival), so on any other level this can only be one left
-  from an earlier visit; how many survive there is for the in-game census to measure.
+  from an earlier visit. The in-game census found such leftovers, but half were old enough for the
+  despawner to release on arrival: a notice never names one the despawner will release.
 - *"There could be one":* a level's fields or Dynamic Anomalies list can yield it, and the level is
   due its post-emission roll (`m_data.artefact_respawn_levels`), which happens when the player
   arrives.
@@ -229,5 +241,6 @@ expiry. Nothing on the HUD.
 ## Still open
 
 - How the survey's delay, its odds of a miss by standing, and its daily limit are tuned (1.1).
-- Whether the in-game census (unowned artifacts per level after each emission and arrival) runs
-  before 1.0 to check the field and Dynamic Anomalies figures above.
+- How many artifacts a real play session leaves per level, and how often a field or Dynamic
+  Anomalies actually yields one after an emission: the in-game census, left on through play, would
+  answer both.
