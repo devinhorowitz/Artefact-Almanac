@@ -113,7 +113,7 @@ function groups(have)
     local C = almanac_data.catalog()
     local out = {}
     for _, g in ipairs(GROUPS) do
-        local total, k = 0, 0
+        local total, k, fd = 0, 0, 0
         for _, sec in ipairs(C.order) do
             local a = C.artifacts[sec]
             if in_group(g, a) and listed(a, have) then
@@ -121,18 +121,21 @@ function groups(have)
                 if known(sec, have) then
                     k = k + 1
                 end
+                if found(sec) then
+                    fd = fd + 1
+                end
             end
         end
         if total > 0 or g.id == "all" then
-            out[#out + 1] = { id = g.id, name = t("st_almanac_group_" .. g.id), known = k, total = total }
+            out[#out + 1] = { id = g.id, name = t("st_almanac_group_" .. g.id), known = k, total = total, found = fd }
         end
     end
     return out
 end
 
--- a group's caption over its artifacts, from groups(): "Tier 4: 1 of 10 known"
+-- a group's caption over its artifacts, from groups(): "Tier 4: 1 of 10 known, 0 found"
 function caption(g)
-    return f("st_almanac_tab_caption", g.name, g.known, g.total)
+    return f("st_almanac_tab_caption", g.name, g.known, g.total, g.found)
 end
 
 -- a name as the list sorts it: opening quotes and spaces left out (Artefact Hunter's artifacts are
@@ -287,7 +290,56 @@ local function book_text(book)
     return n
 end
 
--- each recipe that makes it, the one the trees take first; the others dimmed
+local function sorted_names(set)
+    local out = {}
+    for name in pairs(set or {}) do
+        out[#out + 1] = name
+    end
+    table.sort(out)
+    return out
+end
+
+-- where a book or the Melter comes from: who sells it ("Sold by Professor Hermann"), and who may
+-- carry one ("Carried by Legend-rank stalkers (4%)"), by the catalog's sources
+function source_text(C, item)
+    local s = C.sources and C.sources[item]
+    if not s then
+        return nil
+    end
+    local out = {}
+    local sellers = sorted_names(s.sellers)
+    if #sellers > 0 then
+        out[#out + 1] = f("st_almanac_src_sold", table.concat(sellers, ", "))
+    end
+    if #s.drops > 0 then
+        local ranks, lo, hi = {}, nil, nil
+        for _, d in ipairs(s.drops) do
+            ranks[d.rank] = true
+            lo = math.min(lo or d.chance, d.chance)
+            hi = math.max(hi or d.chance, d.chance)
+        end
+        local pct = lo == hi and string.format("%g%%", lo * 100) or string.format("%g-%g%%", lo * 100, hi * 100)
+        if ranks[""] then
+            out[#out + 1] = f("st_almanac_src_carried_any", pct)
+        else
+            local names = {}
+            for _, r in ipairs(almanac_data.RANKS) do
+                if ranks[r] then
+                    names[#names + 1] = t("st_rank_" .. r)
+                end
+            end
+            out[#out + 1] = f("st_almanac_src_carried", table.concat(names, ", "), pct)
+        end
+    end
+    if #out == 0 then
+        return t("st_almanac_src_none")
+    end
+    return table.concat(out, ". ") .. "."
+end
+
+-- each recipe that makes it. The one the trees take first: its book (and, while it's unread, where
+-- the book comes from), then a line per part, an artifact's a link to it. The others dimmed, a
+-- line each
 local function made_block(C, a, eager)
     local by_key = {}
     for _, r in ipairs(C.recipes) do
@@ -296,9 +348,20 @@ local function made_block(C, a, eager)
     local lines = {}
     for i, key in ipairs(a.made_by) do
         local r = by_key[key]
-        if r then
-            lines[#lines + 1] = { f("st_almanac_made_line", book_text(r.book), parts_text(r.parts, eager)),
-                                  i == 1 and "body" or "dim" }
+        if r and i == 1 then
+            local unread = not almanac_trees.book_known(r.book)
+            lines[#lines + 1] = { f("st_almanac_made_book", book_text(r.book)), unread and "warn" or "body" }
+            local src = unread and source_text(C, r.book)
+            if src then
+                lines[#lines + 1] = { src, "dim" }
+            end
+            for _, p in ipairs(r.parts) do
+                local art = C.artifacts[p[1]] and p[1] or nil
+                lines[#lines + 1] = { f("st_almanac_part", name_of(p[1]), almanac_trees.amount(p[2], eager)),
+                                      art and "body" or "dim", art }
+            end
+        elseif r then
+            lines[#lines + 1] = { f("st_almanac_made_other", book_text(r.book), parts_text(r.parts, eager)), "dim" }
         end
     end
     if #lines == 0 then
@@ -311,7 +374,8 @@ local function into_block(C, a)
     local lines = {}
     for _, u in ipairs(almanac_trees.up(a.sec, C)) do
         local name = C.artifacts[u.sec].name
-        lines[#lines + 1] = { u.depth == 1 and name or f("st_almanac_into_later", name), u.depth == 1 and "body" or "dim" }
+        lines[#lines + 1] = { u.depth == 1 and name or f("st_almanac_into_later", name), u.depth == 1 and "body" or "dim",
+                              u.sec }
     end
     if #lines == 0 then
         lines[1] = { t("st_almanac_into_none"), "dim" }
@@ -319,11 +383,43 @@ local function into_block(C, a)
     return { heading = t("st_almanac_h_into"), lines = lines }
 end
 
--- counts as "name xN" lines, most first, then by name
-local function count_lines(counts, role)
+-- who may ask the player for one: the player's own tasks that ask now, then the givers of fetch
+-- tasks that can ask for it, by name and by faction
+local function wanted_block(C, a)
+    local lines = {}
+    local ok, now = pcall(function() return almanac_learn and almanac_learn.asking(a.sec) end)
+    for _, who in ipairs(ok and now or {}) do
+        lines[#lines + 1] = { f("st_almanac_wanted_now", who), "good" }
+    end
+    local W = C.wanted
+    if W and W.arts[a.sec] then
+        local names = sorted_names(W.names)
+        local factions = {}
+        for c in pairs(W.factions) do
+            factions[#factions + 1] = t(c)
+        end
+        table.sort(factions)
+        if #names > 0 then
+            lines[#lines + 1] = { f("st_almanac_wanted_named", table.concat(names, ", ")), "body" }
+        end
+        if #factions > 0 then
+            lines[#lines + 1] = { f("st_almanac_wanted_factions", table.concat(factions, ", ")), "body" }
+        end
+        if #names == 0 and #factions == 0 then
+            lines[#lines + 1] = { t("st_almanac_wanted_some"), "body" }
+        end
+    end
+    if #lines == 0 then
+        lines[1] = { t("st_almanac_wanted_none"), "dim" }
+    end
+    return { heading = t("st_almanac_h_wanted"), lines = lines }
+end
+
+-- counts as "name xN" lines, most first, then by name; an artifact's line a link to it
+local function count_lines(C, counts, role)
     local list = {}
     for sec, n in pairs(counts) do
-        list[#list + 1] = { name = name_of(sec), n = n }
+        list[#list + 1] = { name = name_of(sec), n = n, sec = C.artifacts[sec] and sec or nil }
     end
     table.sort(list, function(x, y)
         if x.n ~= y.n then
@@ -333,7 +429,7 @@ local function count_lines(counts, role)
     end)
     local lines = {}
     for _, x in ipairs(list) do
-        lines[#lines + 1] = { f("st_almanac_part", x.name, x.n), role }
+        lines[#lines + 1] = { f("st_almanac_part", x.name, x.n), role, x.sec }
     end
     return lines
 end
@@ -348,10 +444,10 @@ local function totals_block(C, a, eager)
         n_arts = n_arts + n
     end
     local lines = { { f("st_almanac_totals", tt.crafts, n_arts, tt.part_count), "body" } }
-    for _, l in ipairs(count_lines(tt.artifacts, "body")) do
+    for _, l in ipairs(count_lines(C, tt.artifacts, "body")) do
         lines[#lines + 1] = l
     end
-    for _, l in ipairs(count_lines(tt.parts, "dim")) do
+    for _, l in ipairs(count_lines(C, tt.parts, "dim")) do
         lines[#lines + 1] = l
     end
     return { heading = t("st_almanac_h_totals"), lines = lines }
@@ -367,19 +463,24 @@ local function need_block(C, a, have, eager)
         lines[1] = { f("st_almanac_need_done", nd.crafts), "good" }
     else
         lines[1] = { f("st_almanac_need_missing", nd.crafts, nd.missing_count), "body" }
-        for _, l in ipairs(count_lines(nd.missing, "warn")) do
+        for _, l in ipairs(count_lines(C, nd.missing, "warn")) do
             lines[#lines + 1] = l
         end
     end
+    -- no Melter with you, and where one comes from
+    if nd.crafts > 0 and (have[almanac_data.MELTER] or 0) == 0 then
+        lines[#lines + 1] = { f("st_almanac_need_melter", source_text(C, almanac_data.MELTER) or ""), "warn" }
+    end
+    -- each book not read yet, and where it comes from
     local unread = {}
     for book in pairs(nd.books) do
         if not almanac_trees.book_known(book) then
-            unread[#unread + 1] = name_of(book)
+            unread[#unread + 1] = { name = name_of(book), book = book }
         end
     end
-    table.sort(unread)
-    if #unread > 0 then
-        lines[#lines + 1] = { f("st_almanac_need_books", table.concat(unread, ", ")), "warn" }
+    table.sort(unread, function(x, y) return x.name < y.name end)
+    for _, u in ipairs(unread) do
+        lines[#lines + 1] = { f("st_almanac_need_book", u.name, source_text(C, u.book) or ""), "warn" }
     end
     return { heading = t("st_almanac_h_need"), lines = lines }
 end
@@ -420,6 +521,7 @@ function entry(sec, have)
     put(where_block(C, a))
     put(made_block(C, a, eager))
     put(into_block(C, a))
+    put(wanted_block(C, a))
     put(totals_block(C, a, eager))
     put(need_block(C, a, have, eager))
     return e

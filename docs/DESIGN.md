@@ -140,11 +140,30 @@ chosen one beside the entry. **Tiers are numbered as the game shows them,** one 
 `tier`: Perk-Based Artefacts lowers every tier of 2 or more by one, its text speaks of tier 1 to 3
 artifacts, and GRIP's icons put N white chevrons on tier N (config tier 2 to 5 shows as 1 to 4).
 Junk shows no tier. The tabs carry the same chevrons; all is the Almanac's crystal, junk (no
-chevron on its icons) a pitted stone. The census keeps the configs' numbers. The entry: the
-inventory's own stat card (GAMMA's caps included), the game's description, the detectors, where the
-Zone makes it, the recipe and its book, what it goes into, the totals from scratch, and what's still
-missing with what the player carries. It opens three ways: Mod App Creator's tile by default when MAC is installed,
-its own tab (MCM, or always without MAC), or an MCM key that opens it flat.
+chevron on its icons) a pitted stone. The census keeps the configs' numbers. A tab's caption says
+how many of its artifacts are known and found. The entry: the inventory's own stat card (GAMMA's
+caps included), the game's description, the detectors, where the Zone makes it, the recipe (its
+book, a part a line), what it goes into, who may ask for one, the totals from scratch, and what's
+still missing with what the player carries. Every line naming another artifact is a link to its
+entry. It opens three ways: Mod App Creator's tile by default when MAC is installed, its own tab
+(MCM, or always without MAC), or an MCM key that opens it flat.
+
+**Where a book or the Melter comes from** (shown for an unread book, and for the Melter when the
+player has none): the traders whose stock holds one (a trade config's `supplies_N`), and the bodies
+that may carry one, as `death_manager` rolls them (a section per faction, private or not, and rank,
+in `itms_manager.ini_death`; an item with no `[item_count]` entry never drops). The game reads each
+trade config's stock itself, but can't tell which trader uses which config: that sits in NPC logic
+files the config listing leaves out, often in a smart terrain job's `[logic@<npc>]` section. So
+`tools/traders.py` (ported from Arsenal's census) writes `plugins/almanac_traders.ltx`, trade config
+to its traders' name strings; `catalog_lua.py` reports it stale when the install's NPC files have
+changed. In this install: Vol. 1 and the Melter from Professors Hermann and Sakharov, Vol. 2 from
+Hermann, Vol. 3 from no trader but carried by master- and legend-rank stalkers (4%).
+
+**Asked for:** fetch tasks pick one item from a `fetch_list.ltx` category (`setup_fetch_task(var:
+category:min:max)`); 24 tasks here use `artefacts`, 32 artifacts with no rank limit. Their givers: a
+faction's squads (`sim_communities`), a faction's traders (`sim_default_<faction>_trader_task_N`), or
+the story NPC whose id starts the task's, named when alive. The player's own tasks that ask for one
+now come first.
 
 **Finds** (`almanac_found.script`, checked in game 2026-11-01): an artifact is found the first time
 one enters the inventory, however it came (picked up, looted from a stash or a body, bought, given,

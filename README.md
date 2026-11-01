@@ -17,8 +17,10 @@ Early development. The plan is in [docs/DESIGN.md](docs/DESIGN.md).
 **The page.** The Almanac in your PDA: tabs across the top for all, junk and each tier, marked with
 the chevrons your inventory puts on an artifact of that tier, and for each artifact the inventory's
 own stat card, the detectors that show it, where the Zone makes it (anomaly fields and shifting
-anomalies, by level), its recipe at the Artefact Melter and the book it needs,
-what it goes into, how much it takes from scratch, and how much you still lack with what you carry.
+anomalies, by level), its recipe at the Artefact Melter and the book it needs (with who sells or
+carries a book you haven't read), what it goes into, who may ask you for one, how much it takes from
+scratch, and how much you still lack with what you carry. Every artifact an entry names is a link to
+its own entry.
 It opens three ways, your choice: Mod App Creator's tile, its own PDA tab, or a key (MCM) that opens
 it flat and sharp. Artifacts you haven't held or read about in the Guide stay unknown; MCM's "Show
 everything" opens them all.
@@ -56,7 +58,9 @@ what you carry is used.
 
 `python -I tools/build.py` checks the mod and installs it as the MO2 mod "Artefact Almanac"
 (`--mods <folder>` for another MO2 instance). `python -I tools/catalog_lua.py` runs the catalog over
-an install's configs and compares it with the offline census.
+an install's configs and compares it with the offline census. `python -I tools/traders.py` rewrites
+`gamedata/configs/plugins/almanac_traders.ltx`, which traders use which trade config (the game can't
+read that from NPC logic); rerun it when `catalog_lua.py` says the map is stale.
 
 **The census** reads an install's configs as the game would (Mod Organizer 2's file order and
 DLTX) and writes what the Almanac will show: every artifact with its card, tier, perk and

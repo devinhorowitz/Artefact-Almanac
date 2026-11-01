@@ -21,9 +21,16 @@
 - **The page:** the Almanac in your PDA: tabs across the top for all, junk and tiers 1 to 4,
   numbered and marked as the game shows them (tier N has N chevrons, as on its icons), with how
   many you know, the artifacts, and each one's entry with the inventory's stat card, detectors,
-  where the Zone makes it, its recipe, what it goes into, and how much you still need. Open it from Mod App Creator's tile, its own PDA
-  tab, or a key that opens it flat (MCM). Artifacts you haven't met stay unknown unless MCM's "Show
-  everything" is on.
+  where the Zone makes it, its recipe, what it goes into, and how much you still need. Open it from
+  Mod App Creator's tile, its own PDA tab, or a key that opens it flat (MCM). Artifacts you haven't
+  met stay unknown unless MCM's "Show everything" is on.
+- **Where books come from:** a recipe book you haven't read says who sells it and who may carry one
+  ("Carried by Master, Legend-rank stalkers (4%)"), and so does the Artefact Melter when you have
+  none with you.
+- **Asked for:** each entry says whether one of your tasks wants the artifact now, and which
+  traders, squads and named stalkers may ask for one in a fetch task.
+- **Links:** every artifact an entry names (its parts, what it goes into, the totals, what's
+  missing) opens that artifact's entry. A tab's caption also counts what you've found.
 - **Finds:** the first time an artifact comes into your hands, the Almanac remembers it: the date,
   how (picked up, looted, bought, given, made at the Melter) and where, shown on its page, with a
   PDA message (MCM's "Messages" turns them off). Found artifacts stay known. They're kept in your

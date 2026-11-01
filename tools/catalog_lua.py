@@ -12,9 +12,11 @@ install's own Dynamic Anomalies script run as its module. Paths come from the AL
                                           summary, exit 1 on any difference
     ALMANAC_DATA_SCRIPT=<path>            run another copy of almanac_data.script (the tests' mutants)
     ALMANAC_TREES_SCRIPT=<path>           the same for almanac_trees.script
+    ALMANAC_TRADERS=<path>                another trader map than the repo's almanac_traders.ltx
 """
 import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +29,8 @@ SCRIPT = os.environ.get("ALMANAC_DATA_SCRIPT",
                         os.path.join(HERE, "..", "gamedata", "scripts", "almanac_data.script"))
 TREES = os.environ.get("ALMANAC_TREES_SCRIPT",
                        os.path.join(HERE, "..", "gamedata", "scripts", "almanac_trees.script"))
+TRADERS = os.environ.get("ALMANAC_TRADERS",
+                         os.path.join(HERE, "..", "gamedata", "configs", "plugins", "almanac_traders.ltx"))
 
 STUBS = r"""
 LOG = {}
@@ -118,6 +122,25 @@ class Ini:
         return self
 
 
+def plain_ini(path):
+    """a plain config file (no includes, no DLTX): section -> key -> value"""
+    data, sec = {}, None
+    for line in open(path, encoding="cp1251").read().splitlines():
+        line = line.split(";")[0].strip()
+        m = re.match(r"^\[([^\]]+)\]", line)
+        if m:
+            sec = data.setdefault(m.group(1).lower(), {})
+        elif sec is not None and "=" in line:
+            k, v = line.split("=", 1)
+            sec[k.strip()] = v.strip()
+    return data
+
+
+def named_traders():
+    """the trade config stems the trader map gives a named trader"""
+    return {k for k, v in plain_ini(TRADERS).get("almanac_trade", {}).items() if v and v != "-"}
+
+
 def lua_catalog():
     vfs, S = gamecfg.system()
     svfs = gamecfg.VFS("scripts")
@@ -132,7 +155,9 @@ def lua_catalog():
     def ini_file(path):
         rel = "configs\\" + path.replace("/", "\\").lower()
         if rel not in cache:
-            cache[rel] = g.wrap_ini(Ini(census.ini(vfs, rel)).with_names(lua))
+            # the trader map is the Almanac's own: the repo's copy, not the install's
+            data = plain_ini(TRADERS) if rel == "configs\\plugins\\almanac_traders.ltx" else census.ini(vfs, rel)
+            cache[rel] = g.wrap_ini(Ini(data).with_names(lua))
         return cache[rel]
 
     def sys_get_param(typ, sec, key, default=None):
@@ -154,7 +179,9 @@ def lua_catalog():
         if len(p) == 5 and p[1] == "scripts" and p[3] == "anomaly" and p[4].endswith(".ltx"):
             zones.append(lua.table_from(["\\".join(p[1:]), census.FIELD_LEVELS.get(p[2], p[2])]))
     g.make_world(lua.table_from(zones))
-    g.itms_manager = lua.table_from({"ini_craft": ini_file("items\\settings\\craft.ltx")})
+    g.itms_manager = lua.table_from({"ini_craft": ini_file("items\\settings\\craft.ltx"),
+                                     "ini_death": ini_file("items\\settings\\death_generic.ltx")})
+    g.task_manager = lua.table_from({"task_ini": ini_file("misc\\task\\task_manager.ltx")})
     text, _ = svfs.read("scripts\\drx_da_main_artefacts.script")
     if text is not None:
         g.drx_da_main_artefacts = g.run_module(text, "drx_da_main_artefacts")
@@ -194,8 +221,11 @@ def plain(C, trees):
         }
     groups = {gname: lst(m) for gname, m in C.groups.items()}
     recipes = sorted(r.key for r in C.recipes.values())
+    sources = {item: {"sold": sorted("configs\\" + f for f in lst(s.files)), "carried": len(lst(s.drops)) > 0}
+               for item, s in C.sources.items()}
     return {"artifacts": arts, "groups": groups, "recipes": recipes, "fields": len(lst(C.fields)),
-            "detectors": {d: lst(v) for d, v in C.detectors.items()}, "failed": lst(C.failed)}
+            "detectors": {d: lst(v) for d, v in C.detectors.items()}, "failed": lst(C.failed),
+            "sources": sources, "wanted": sorted(C.wanted.arts.keys())}
 
 
 def expected(c):
@@ -210,14 +240,28 @@ def expected(c):
             "dao": a["dao"], "dao_random": a["dao_random"],
             "tree": a["tree"],
         }
+    # the books that are items, and the Melter: the trade configs that stock one, and whether a
+    # death list (not just its [item_count]) hands one out
+    books = {b: r for b, r in c["books"].items() if r["name"] is not None}
+    books[c["melter"]["section"]] = c["melter"]
+    used = named_traders()
+    sources = {b: {"sold": sorted(m["file"] for m in r["mentions"] if m["kind"] == "sold"
+                                  and m["file"].rsplit("\\", 1)[1][:-4] in used),
+                   "carried": any(m["kind"] == "death drops" for m in r["mentions"])
+                   and any("item_count" in (m.get("sections") or []) for m in r["mentions"])}
+               for b, r in books.items()}
+    wanted = sorted(sec for sec, a in c["artifacts"].items()
+                    if any(m["kind"] == "task" and m["file"] == "configs\\items\\settings\\fetch_list.ltx"
+                           for m in a["mentions"]))
     return {"artifacts": arts, "groups": c["groups"]["registered"],
             "recipes": sorted(r["key"] for r in c["recipes"]), "fields": len(c["fields"]),
-            "detectors": {d: v["list"] for d, v in c["detectors"].items()}, "failed": []}
+            "detectors": {d: v["list"] for d, v in c["detectors"].items()}, "failed": [],
+            "sources": sources, "wanted": wanted}
 
 
 def compare(got, want):
     diffs, n = [], 0
-    for key in ("groups", "recipes", "fields", "detectors", "failed"):
+    for key in ("groups", "recipes", "fields", "detectors", "failed", "sources", "wanted"):
         n += 1
         if got[key] != want[key]:
             diffs.append("%s: lua %r, census %r" % (key, got[key], want[key]))
@@ -233,14 +277,36 @@ def compare(got, want):
     return diffs, n
 
 
+def stale_traders():
+    """the repo's trader map against traders.py's reading of this install: the stems that differ"""
+    import traders
+    vfs, S = gamecfg.system()
+    fresh = {k: ", ".join(v) or "-" for k, v in traders.trade_map(vfs, S).items()}
+    kept = plain_ini(TRADERS).get("almanac_trade", {})
+    return sorted(k for k in set(fresh) | set(kept) if fresh.get(k) != kept.get(k))
+
+
 def main():
     C, log, trees = lua_catalog()
     got = plain(C, trees)
     want = expected(census.build())
     diffs, n = compare(got, want)
+    # the repo's trader map, unless a test hands its own, is the one traders.py writes today
+    if "ALMANAC_TRADERS" not in os.environ:
+        n += 1
+        stale = stale_traders()
+        if stale:
+            diffs.append("almanac_traders.ltx is stale (rerun tools/traders.py): %s" % ", ".join(stale))
+    W = C.wanted
+    sources = {item: {"sellers": sorted(s.sellers.keys()),
+                      "drops": [[d.comm, d.rank, d.chance] for d in (s.drops[i] for i in range(1, len(s.drops) + 1))]}
+               for item, s in C.sources.items()}
     print(json.dumps({"compared": n, "differences": diffs[:40], "n_differences": len(diffs),
                       "artifacts": len(got["artifacts"]), "recipes": len(got["recipes"]),
-                      "fields": got["fields"], "log": [x for x in log if "almanac-data" in x]}, indent=1))
+                      "fields": got["fields"], "log": [x for x in log if "almanac-data" in x],
+                      "sources": sources, "wanted": got["wanted"], "wanted_tasks": W.tasks,
+                      "wanted_factions": sorted(W.factions.keys()), "wanted_givers": sorted(W.givers.keys())},
+                     indent=1))
     sys.exit(1 if diffs else 0)
 
 

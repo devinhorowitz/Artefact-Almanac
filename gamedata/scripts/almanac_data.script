@@ -4,8 +4,9 @@ Artefact Almanac: the catalog.
 What the Almanac knows about the Zone's artifacts, read from the running game's own configs (DLTX
 included) and built once per load, on first use: every artifact and junk artifact with its
 containers, tier and the detectors that list it; the workshop's recipes; each level's anomaly
-fields and the chance a field's pick names each artifact; and Dynamic Anomalies' lists. Nothing
-here is saved or changed. tools/census.py reads the same things offline, and the tests hold the
+fields and the chance a field's pick names each artifact; Dynamic Anomalies' lists; who sells or
+carries the recipe books and the Melter; and the artifacts fetch tasks can ask for. Nothing here
+is saved or changed. tools/census.py reads the same things offline, and the tests hold the
 two to the same answers.
 
     almanac_data.catalog()        the catalog (built on the first call after a load)
@@ -15,6 +16,11 @@ VERSION = "0.1.0"
 
 local KINDS = { i_arty = true, i_arty_junk = true }
 local CONTAINER_SUFFIXES = { "_lead_box", "_af_iam", "_af_aac", "_af_aam" }
+MELTER = "itm_artefactskit"
+-- death_manager's factions and ranks ("" the faction's own section), lowest rank first
+COMMUNITIES = { "stalker", "dolg", "freedom", "bandit", "army", "zombied", "ecolog", "killer", "monolith",
+                "csky", "renegade", "greh", "isg", "greh_npc", "army_npc" }
+RANKS = { "", "novice", "trainee", "experienced", "professional", "veteran", "expert", "master", "legend" }
 
 local function trim(s)
     return (s:gsub("^%s+", ""):gsub("%s+$", ""))
@@ -191,6 +197,22 @@ local function read_groups(C)
     end
 end
 
+local function norm(path)
+    return (string.lower(path):gsub("/", "\\"))
+end
+
+-- a person's name, as the alife keeps it (a name string's id is translated)
+local function name_of_se(se)
+    local ok, name = pcall(se.character_name, se)
+    if not (ok and type(name) == "string" and name ~= "") then
+        return nil
+    end
+    if not name:find(" ") and name:find("_") then
+        name = game.translate_string(name)
+    end
+    return name
+end
+
 -- the field configs the Zone's anomaly zones use: each zone's spawn settings name its config in
 -- [anomal_zone] cfg, as bind_anomaly_zone reads it; the zone's game vertex gives its level. (The
 -- engine's config file list leaves out configs\scripts, so the files can't be listed.) One entry
@@ -205,7 +227,7 @@ function field_files()
             local ok, ini = pcall(se.spawn_ini, se)
             local cfg = ok and ini and ini:section_exist("anomal_zone") and ini:r_string_ex("anomal_zone", "cfg")
             if cfg and cfg ~= "" then
-                local path = string.lower(cfg):gsub("/", "\\")
+                local path = norm(cfg)
                 local lok, lvl = pcall(function() return sim:level_name(gg:vertex(se.m_game_vertex_id):level_id()) end)
                 lvl = lok and lvl or "?"
                 local key = lvl .. "|" .. path
@@ -217,6 +239,27 @@ function field_files()
         end
     end
     table.sort(out, function(a, b) return a.path < b.path or (a.path == b.path and a.level < b.level) end)
+    return out
+end
+
+-- the trade configs some NPC's logic uses, with their traders' names: the game can't tell which
+-- logic names which config (logic files can't be listed, and a trader's often sits in a smart
+-- terrain job's section), so tools/traders.py writes it to plugins\almanac_traders.ltx from the
+-- install's NPC files; each name string is translated here
+local function traders()
+    local out = {}
+    local ini = ini_file("plugins\\almanac_traders.ltx")
+    for _, kv in ipairs(lines(ini, "almanac_trade")) do
+        local names = {}
+        for _, n in ipairs(csv(kv[2])) do
+            if n ~= "-" then
+                names[#names + 1] = game.translate_string(n)
+            end
+        end
+        if #names > 0 then
+            out["items\\trade\\" .. kv[1] .. ".ltx"] = names
+        end
+    end
     return out
 end
 
@@ -300,13 +343,130 @@ local function read_dao(C)
     end
 end
 
+-- where the recipe books and the Melter come from: the traders whose stock (a trade config's
+-- supplies_N sections) holds one, and the bodies that may carry one, as death_manager rolls them
+-- (a section per faction, private or not, and rank, in itms_manager.ini_death; an item with no
+-- [item_count] entry never drops)
+local function read_sources(C)
+    C.sources = {}
+    for _, r in ipairs(C.recipes) do
+        if r.book and ini_sys:section_exist(r.book) then
+            C.sources[r.book] = { sellers = {}, files = {}, drops = {} }
+        end
+    end
+    C.sources[MELTER] = { sellers = {}, files = {}, drops = {} }
+    local by_file = traders()
+    for _, path in ipairs(sorted_keys(by_file)) do
+        local ini = ini_file(path)
+        local supplies = {}
+        ini:section_for_each(function(s)
+            if s:match("^supplies_%d+$") then
+                supplies[#supplies + 1] = s
+            end
+        end)
+        for item, src in pairs(C.sources) do
+            for _, s in ipairs(supplies) do
+                if ini:line_exist(s, item) then
+                    src.files[#src.files + 1] = path
+                    for _, name in ipairs(by_file[path]) do
+                        src.sellers[name] = true
+                    end
+                    break
+                end
+            end
+        end
+    end
+    local death = itms_manager and itms_manager.ini_death
+    if not death then
+        return
+    end
+    for item, src in pairs(C.sources) do
+        if death:line_exist("item_count", item) then
+            for _, comm in ipairs(COMMUNITIES) do
+                for _, private in ipairs({ "", "_private" }) do
+                    for _, rank in ipairs(RANKS) do
+                        local s = comm .. private .. (rank ~= "" and ("_" .. rank) or "")
+                        local chance = death:section_exist(s) and death:line_exist(s, item)
+                            and tonumber(death:r_string_ex(s, item)) or 0
+                        if chance > 0 then
+                            src.drops[#src.drops + 1] = { comm = comm, rank = rank, chance = chance }
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- the artifacts fetch tasks can ask for, and who gives those tasks: a task's fetch_func
+-- setup_fetch_task(var:what:...) names an item or a fetch_list category (tasks_fetch loads the
+-- categories [fetch_list] names, and picks one of the category's items). A task's giver: the
+-- factions its sim_communities name (squad leaders), a faction's traders (sim_default_<faction>_
+-- trader_task_N), or the story NPC whose id starts its own (<story id>_task_N, drx_sl_ dropped)
+local function read_wanted(C)
+    local W = { arts = {}, tasks = 0, factions = {}, givers = {} }
+    C.wanted = W
+    local fl = ini_file("items\\settings\\fetch_list.ltx")
+    local lists = {}
+    for _, kv in ipairs(lines(fl, "fetch_list")) do
+        local held = {}
+        for _, it in ipairs(lines(fl, kv[1])) do
+            if C.artifacts[it[1]] then
+                held[it[1]] = true
+            end
+        end
+        if next(held) then
+            lists[kv[1]] = held
+        end
+    end
+    local tasks = (task_manager and task_manager.task_ini) or ini_file("misc\\task\\task_manager.ltx")
+    tasks:section_for_each(function(id)
+        local ff = tasks:r_string_ex(id, "fetch_func")
+        local args = ff and ff:match("setup_fetch_task%(([^%)]*)%)")
+        local what = args and args:match("^[^:]*:([^:]+)")
+        local arts = what and (lists[what] or (C.artifacts[what] and { [what] = true }))
+        if not arts then
+            return
+        end
+        for sec in pairs(arts) do
+            W.arts[sec] = true
+        end
+        W.tasks = W.tasks + 1
+        local comms = tasks:r_string_ex(id, "sim_communities")
+        local trader = id:match("^sim_default_(.-)_trader_task_%d+$")
+        if comms and comms ~= "" then
+            for _, c in ipairs(csv(comms)) do
+                W.factions[c] = true
+            end
+        elseif trader then
+            W.factions[trader] = true
+        else
+            local sid = id:gsub("^drx_sl_", ""):match("^(.-)_task_%d+$")
+            if sid then
+                W.givers[sid] = true
+            end
+        end
+    end)
+    -- the givers by name, the living ones the game knows by their story id
+    W.names = {}
+    for sid in pairs(W.givers) do
+        local oid = get_story_object_id and get_story_object_id(sid)
+        local se = oid and alife():object(oid)
+        local name = se and name_of_se(se)
+        if name and pcall(se.alive, se) and se:alive() then
+            W.names[name] = true
+        end
+    end
+end
+
 -- build the catalog; each part fails on its own, logged, without taking the rest down
 function build()
     local t0 = os.clock()
     local C = { version = VERSION, artifacts = {}, detectors = {}, recipes = {}, groups = {},
-                fields = {}, dao = nil, failed = {} }
+                fields = {}, dao = nil, sources = {}, wanted = nil, failed = {} }
     for _, part in ipairs({ { "items", read_items }, { "recipes", read_recipes }, { "groups", read_groups },
-                            { "fields", read_fields }, { "dao", read_dao } }) do
+                            { "fields", read_fields }, { "dao", read_dao }, { "sources", read_sources },
+                            { "wanted", read_wanted } }) do
         local ok, err = pcall(part[2], C)
         if not ok then
             C.failed[#C.failed + 1] = part[1]

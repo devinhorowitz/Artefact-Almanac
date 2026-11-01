@@ -42,7 +42,7 @@ MUTANTS = {
     "book_unread": ("    if not almanac_trees.book_known(book) then\n        return f(\"st_almanac_book_unread\", n)\n",
                     "    if false then\n        return f(\"st_almanac_book_unread\", n)\n"),
     "into_depth": ('u.depth == 1 and name or f("st_almanac_into_later", name)', "name"),
-    "need_missing": ('for _, l in ipairs(count_lines(nd.missing, "warn")) do', 'for _, l in ipairs({}) do'),
+    "need_missing": ('for _, l in ipairs(count_lines(C, nd.missing, "warn")) do', 'for _, l in ipairs({}) do'),
     "sort_quotes": ("""return string.lower((name:gsub('^[%s"\\'\\171\\187]+', "")))""", "return string.lower(name)"),
     "found_known": ("    if found(sec) or learned(sec) then\n        return true\n    end\n", "    if learned(sec) then\n        return true\n    end\n"),
     "learned_known": ("    if found(sec) or learned(sec) then\n", "    if found(sec) then\n"),
@@ -52,16 +52,32 @@ MUTANTS = {
     "shown_tier": ("        return a.tier - 1\n", "        return a.tier\n"),
     "shown_from_two": ("a.tier and a.tier >= 2 then\n        return a.tier - 1", "a.tier and a.tier >= 1 then\n        return a.tier - 1"),
     "junk_kind": ('    if a.kind == "i_arty_junk" then\n        return t("st_almanac_kind_junk")\n    end\n', ""),
-    "caption_counts": ('f("st_almanac_tab_caption", g.name, g.known, g.total)', 'f("st_almanac_tab_caption", g.name, g.total, g.known)'),
+    "made_part_link": ('art and "body" or "dim", art }', 'art and "body" or "dim", nil }'),
+    "into_link": ('u.depth == 1 and "body" or "dim",\n                              u.sec }', 'u.depth == 1 and "body" or "dim",\n                              nil }'),
+    "count_link": ('{ f("st_almanac_part", x.name, x.n), role, x.sec }', '{ f("st_almanac_part", x.name, x.n), role }'),
+    "book_source_unread": ("local src = unread and source_text(C, r.book)", "local src = source_text(C, r.book)"),
+    "melter_line": ("    if nd.crafts > 0 and (have[almanac_data.MELTER] or 0) == 0 then\n", "    if false then\n"),
+    "melter_carried": ("    if nd.crafts > 0 and (have[almanac_data.MELTER] or 0) == 0 then\n", "    if nd.crafts > 0 then\n"),
+    "drop_range": ("lo = math.min(lo or d.chance, d.chance)", "lo = d.chance"),
+    "any_rank": ('        if ranks[""] then\n', "        if false then\n"),
+    "wanted_now": ("for _, who in ipairs(ok and now or {}) do", "for _, who in ipairs({}) do"),
+    "wanted_listed": ("    if W and W.arts[a.sec] then\n", "    if W then\n"),
+    "caption_found": ("                if found(sec) then\n                    fd = fd + 1\n", "                if false then\n                    fd = fd + 1\n"),
+    "caption_counts": ('g.name, g.known, g.total, g.found)', 'g.name, g.total, g.known, g.found)'),
 }
 
 WORLD = r"""
 STR = {
     st_almanac_fields = "Fields: %s", st_almanac_dao = "DAO: %s", st_almanac_dao_random = "DAO anywhere",
-    st_almanac_and_more = "%s and %s more", st_almanac_part = "%s x%s", st_almanac_made_line = "%s: %s",
+    st_almanac_and_more = "%s and %s more", st_almanac_part = "%s x%s", st_almanac_made_book = "Book: %s",
+    st_almanac_made_other = "Or (%s): %s", st_almanac_src_sold = "Sold by %s", st_almanac_src_carried = "Carried by %s (%s)",
+    st_almanac_src_carried_any = "Carried (%s)", st_almanac_src_none = "Nowhere.", st_almanac_need_book = "unread: %s. %s",
+    st_almanac_need_melter = "No melter. %s", st_almanac_wanted_now = "Task for %s", st_almanac_wanted_named = "Tasks from %s",
+    st_almanac_wanted_factions = "Squads of %s", st_almanac_wanted_some = "Some tasks", st_almanac_wanted_none = "No task",
+    st_rank_master = "Master", st_rank_legend = "Legend", stalker = "Loners", ecolog = "Ecologists",
     st_almanac_book_unread = "%s (unread)", st_almanac_book_builtin = "built in", st_almanac_into_later = "then %s",
     st_almanac_totals = "%s crafts, %s bottom, %s parts", st_almanac_need_done = "all there: %s",
-    st_almanac_need_missing = "%s crafts, missing %s", st_almanac_need_books = "unread: %s",
+    st_almanac_need_missing = "%s crafts, missing %s",
     st_almanac_kind_arty_tier = "Artifact %s", st_almanac_kind_junk = "Junk", st_almanac_kind_arty = "Artifact",
     st_almanac_weight = "W %s", st_almanac_unknown = "Unknown", st_almanac_unknown_entry = "Not met yet",
     st_almanac_detectors_none = "no detector",
@@ -72,7 +88,8 @@ INI = {
     z = { inv_name = "Zed" }, q = { inv_name = "Quest" }, part_p = { inv_name = "Paw" },
     j2 = { inv_name = "Junk Two" }, k = { inv_name = '"Kay"' }, w = { inv_name = "Wee" },
     det_echo = { inv_name = "Echo" }, det_bear = { inv_name = "Bear" }, det_bear2 = { inv_name = "Bear" },
-    mp_det = { inv_name = "MP" }, book1 = { inv_name = "Vol1" },
+    mp_det = { inv_name = "MP" }, book1 = { inv_name = "Vol1" }, book2 = { inv_name = "Vol2" },
+    melter = { inv_name = "Melter" },
 }
 ini_sys = {
     r_string_ex = function(_, s, k) return INI[s] and INI[s][k] or nil end,
@@ -80,10 +97,10 @@ ini_sys = {
 }
 MCM = {}
 ui_mcm = { get = function(k) return MCM[k] end }
-ARTICLES = {}
+ARTICLES, NOTES = {}, {}
 ui_pda_encyclopedia_tab = {
     is_unlocked_article = function(id) return ARTICLES[id] == true end,
-    is_unlocked_note = function(id) return false end,
+    is_unlocked_note = function(id) return NOTES[id] == true end,
 }
 game_achievements = { has_achievement = function() return false end }
 local function art(sec, kind, tier, t)
@@ -111,11 +128,26 @@ CAT = {
     recipes = {
         { key = "r_b", result = "b", book = "recipe_basic_0", parts = { { "a_junk", 1 }, { "part_p", 5 } } },
         { key = "r_c", result = "c", book = "book1", parts = { { "b", 2 } } },
-        { key = "r_k", result = "k", book = "book1", parts = { { "b", 1 } } },
+        { key = "r_k", result = "k", book = "book2", parts = { { "b", 1 } } },
     },
+    -- book1 sold, book2 carried at two ranks (the lower chance first), the Melter sold; and three
+    -- made up for source_text: nowhere, any rank, both ways
+    sources = {
+        book1 = { sellers = { ["Prof H"] = true, ["Prof S"] = true }, drops = {} },
+        book2 = { sellers = {}, drops = { { comm = "stalker", rank = "master", chance = 0.02 },
+                                          { comm = "dolg", rank = "legend", chance = 0.04 } } },
+        melter = { sellers = { ["Prof H"] = true }, drops = {} },
+        nowhere = { sellers = {}, drops = {} },
+        any_rank = { sellers = {}, drops = { { comm = "stalker", rank = "", chance = 0.1 } } },
+        both = { sellers = { ["Prof S"] = true }, drops = { { comm = "army", rank = "legend", chance = 0.04 } } },
+    },
+    wanted = { arts = { b = true, c = true }, names = { Sakharov = true, Beard = true }, factions = { stalker = true, ecolog = true } },
 }
 CAT.order = { "a_junk", "b", "c", "j2", "k", "q", "w", "z" }
-almanac_data = { catalog = function() return CAT end }
+almanac_data = { catalog = function() return CAT end, MELTER = "melter",
+                 RANKS = { "", "novice", "trainee", "experienced", "professional", "veteran", "expert", "master", "legend" } }
+ASKING = {}
+almanac_learn = { asking = function(sec) return ASKING[sec] or {} end }
 FOUND, HEARD = {}, {}
 almanac_found = {
     is_found = function(sec) return FOUND[sec] ~= nil end,
@@ -129,7 +161,7 @@ STR.st_almanac_found_on = "Found %s: %s"
 STR.st_almanac_not_found = "Not found"
 STR.st_almanac_learned_on = "Heard of %s: %s"
 STR.st_almanac_group_junk = "Junk"
-STR.st_almanac_tab_caption = "%s: %s of %s known"
+STR.st_almanac_tab_caption = "%s: %s of %s known, %s found"
 """
 
 
@@ -174,7 +206,7 @@ def main():
         e = P.entry(sec, have)
         if e is None:
             return None
-        blocks = [(b.heading, [(l[1], l[2]) for l in lst(b.lines)]) for b in lst(e.blocks)]
+        blocks = [(b.heading, [(l[1], l[2], l[3]) for l in lst(b.lines)]) for b in lst(e.blocks)]
         return {"known": e.known, "name": e.name, "kind": e.kind, "blocks": blocks}
 
     try:
@@ -193,7 +225,7 @@ def main():
         eq("groups, b carried", groups(carry_b), [("all", 2, 6), ("junk", 1, 2), ("t1", 1, 1), ("t2", 0, 1), ("t3", 0, 1), ("other", 0, 1)])
         eq("rows, b carried", [(r[0], r[2]) for r in rows("all", carry_b)], [("b", True), ("a_junk", True), ("c", False), ("j2", False), ("k", False), ("w", False)])
         eq("rows t1 and other", (rows("t1", carry_b)[0][0], [r[0] for r in rows("other", carry_b)]), ("b", ["w"]))
-        eq("caption", P.caption(lst(P.groups(carry_b))[1]), "Junk: 1 of 2 known")
+        eq("caption", P.caption(lst(P.groups(carry_b))[1]), "Junk: 1 of 2 known, 0 found")
         g.MCM["almanac/jailbreak"] = True
         eq("groups, jailbreak", groups(none), [("all", 8, 8), ("junk", 2, 2), ("t1", 1, 1), ("t2", 1, 1), ("t3", 2, 2), ("other", 2, 2)])
         eq("sorted without quotes", [r[1] for r in rows("all", none)],
@@ -213,20 +245,35 @@ def main():
            ["Artifact 1", "Artifact 2", "Artifact 3", "Junk", "Junk", "Artifact", "Artifact"])
         heads = [b[0] for b in e["blocks"]]
         eq("headings", heads, ["st_almanac_h_detectors", "st_almanac_h_where", "st_almanac_h_made",
-                               "st_almanac_h_into", "st_almanac_h_totals", "st_almanac_h_need"])
+                               "st_almanac_h_into", "st_almanac_h_wanted", "st_almanac_h_totals", "st_almanac_h_need"])
         B = dict(e["blocks"])
-        eq("detectors", B["st_almanac_h_detectors"], [("Bear, Echo", "body")])
-        eq("where", B["st_almanac_h_where"], [("Fields: lvl10, lvl9, lvl8, lvl7, lvl6, lvl5, lvl4, lvl3 and 2 more", "body")])
-        eq("made", B["st_almanac_h_made"], [("built in: Junk A x1, Paw x5", "body")])
-        eq("into", B["st_almanac_h_into"], [("Cee", "body"), ('"Kay"', "body")])
-        eq("totals", B["st_almanac_h_totals"], [("1 crafts, 1 bottom, 5 parts", "body"), ("Junk A x1", "body"), ("Paw x5", "dim")])
-        eq("need", B["st_almanac_h_need"], [("1 crafts, missing 3", "body"), ("Paw x3", "warn")])
+        eq("detectors", B["st_almanac_h_detectors"], [("Bear, Echo", "body", None)])
+        eq("where", B["st_almanac_h_where"], [("Fields: lvl10, lvl9, lvl8, lvl7, lvl6, lvl5, lvl4, lvl3 and 2 more", "body", None)])
+        # the recipe: its book (built in: no source), then a part a line, an artifact's a link
+        eq("made", B["st_almanac_h_made"], [("Book: built in", "body", None), ("Junk A x1", "body", "a_junk"), ("Paw x5", "dim", None)])
+        eq("into", B["st_almanac_h_into"], [("Cee", "body", "c"), ('"Kay"', "body", "k")])
+        eq("totals", B["st_almanac_h_totals"], [("1 crafts, 1 bottom, 5 parts", "body", None), ("Junk A x1", "body", "a_junk"),
+                                                ("Paw x5", "dim", None)])
+        # no Melter in the pack: where one comes from
+        eq("need", B["st_almanac_h_need"], [("1 crafts, missing 3", "body", None), ("Paw x3", "warn", None),
+                                            ("No melter. Sold by Prof H.", "warn", None)])
+        # asked for: the player's own task, then fetch tasks' givers by name and by faction
+        eq("wanted", B["st_almanac_h_wanted"], [("Tasks from Beard, Sakharov", "body", None), ("Squads of Ecologists, Loners", "body", None)])
+        g.ASKING["b"] = lua.table_from(["Sidorovich"])
+        eq("wanted now", dict(entry("b", carry_b)["blocks"])["st_almanac_h_wanted"][0], ("Task for Sidorovich", "good", None))
+        g.ASKING["b"] = None
+        # where a book or the Melter comes from
+        eq("sources", [P.source_text(g.CAT, s) for s in ("book1", "book2", "nowhere", "any_rank", "both", "none_such")],
+           ["Sold by Prof H, Prof S.", "Carried by Master, Legend (2-4%).", "Nowhere.", "Carried (10%).",
+            "Sold by Prof S. Carried by Legend (4%).", None])
         # a find makes it known, after the pack is empty again, and the entry says when and how
         g.FOUND["z"] = lua.table_from({"date": "14.05.2012", "how": "picked up"})
         eq("known by a find", (P.known("z", none), [r[0] for r in rows("t3", none) if r[2]]), (True, ["z"]))
         eq("found line", (P.entry("z", none).found[1], P.entry("z", none).found[2]), ("Found 14.05.2012: picked up", "good"))
         eq("not found line", P.entry("b", carry_b).found[1], "Not found")
         eq("counts", list(P.counts(none)), [1, 7, 1])
+        eq("found in the caption", P.caption(lst(P.groups(none))[4]), "st_almanac_group_t3: 1 of 2 known, 1 found")
+        eq("not asked for", dict(entry("z", none)["blocks"])["st_almanac_h_wanted"], [("No task", "dim", None)])
         g.FOUND["z"] = None
         # heard of without holding one: known, and the entry says so; a find comes first
         g.HEARD["z"] = lua.table_from({"date": "15.05.2012", "how": "on the radio"})
@@ -237,12 +284,21 @@ def main():
         g.FOUND["z"], g.HEARD["z"] = None, None
         e = entry("c", lua.table_from({"c": 1}))
         B = dict(e["blocks"])
-        eq("where c", B["st_almanac_h_where"], [("DAO: lvl3, lvl2", "body"), ("DAO anywhere", "body")])
-        eq("made c", B["st_almanac_h_made"], [("Vol1 (unread): Bee x2", "body")])
-        eq("need c", B["st_almanac_h_need"][-1], ("unread: Vol1", "warn"))
+        eq("where c", B["st_almanac_h_where"], [("DAO: lvl3, lvl2", "body", None), ("DAO anywhere", "body", None)])
+        # an unread book: where it comes from, under it; and again with what you carry
+        eq("made c", B["st_almanac_h_made"], [("Book: Vol1 (unread)", "warn", None), ("Sold by Prof H, Prof S.", "dim", None),
+                                              ("Bee x2", "body", "b")])
+        eq("need c", B["st_almanac_h_need"][-2:], [("No melter. Sold by Prof H.", "warn", None),
+                                                   ("unread: Vol1. Sold by Prof H, Prof S.", "warn", None)])
+        # with the Melter in the pack, no word of one; with the book read, no word of where it's sold
+        e = entry("c", lua.table_from({"c": 1, "melter": 1}))
+        eq("melter carried", [l for l in dict(e["blocks"])["st_almanac_h_need"] if l[0].startswith("No melter")], [])
+        g.NOTES["encyclopedia__notes_book1"] = True
+        eq("book read", dict(entry("c", lua.table_from({"c": 1}))["blocks"])["st_almanac_h_made"], [("Book: Vol1", "body", None), ("Bee x2", "body", "b")])
+        g.NOTES["encyclopedia__notes_book1"] = None
         e = entry("a_junk", lua.table_from({"a_junk": 1}))
         B = dict(e["blocks"])
-        eq("into a_junk", B["st_almanac_h_into"], [("Bee", "body"), ("then Cee", "dim"), ('then "Kay"', "dim")])
+        eq("into a_junk", B["st_almanac_h_into"], [("Bee", "body", "b"), ("then Cee", "dim", "c"), ('then "Kay"', "dim", "k")])
         eq("no totals for what nothing makes", "st_almanac_h_totals" in B, False)
     except Exception as ex:
         fails.append("the run crashed: %s" % str(ex).splitlines()[0])
