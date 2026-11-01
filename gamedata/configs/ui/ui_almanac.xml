@@ -80,6 +80,12 @@
 	</entry_icon_bg>
 	<entry_icon_frame x="8" y="8" width="436" height="84" stretch="1"/>
 	<entry_icon x="0" y="0" width="10" height="10" stretch="1"/>
+	<!-- see-through: a stat card label measured as the inventory's row lays it out (utils.xml
+	     stats_box cap: 125 wide, 100 in utils_16.xml, which ui_almanac sets on a widescreen;
+	     letterica16, wrapping) -->
+	<entry_card_cap x="21" y="0" width="125" height="8">
+		<text complex_mode="1" font="letterica16" align="l"/>
+	</entry_card_cap>
 	<entry_name x="0" y="104" width="452" height="20">
 		<text font="letterica18" r="238" g="196" b="112" align="l" vert_align="t" complex_mode="1"/>
 	</entry_name>

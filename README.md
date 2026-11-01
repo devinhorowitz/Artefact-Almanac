@@ -22,9 +22,9 @@ carries a book you haven't read), what it goes into, who may ask you for one, ho
 scratch, and how much you still lack with what you carry (with Craft From Stashes, your stashes
 within its range count too, as at the workshop). Every artifact an entry names is a link to its own
 entry.
-It opens three ways, your choice: Mod App Creator's tile, its own PDA tab, or a key (MCM) that opens
-it flat and sharp. Artifacts you haven't held or read about in the Guide stay unknown; MCM's "Show
-everything" opens them all.
+In English and Russian. It opens three ways, your choice: Mod App Creator's tile, its own PDA tab,
+or a key (MCM) that opens it flat and sharp. Artifacts you haven't come to know stay unknown; MCM's
+"Show everything" opens them all.
 
 **Finds.** The first time an artifact comes into your hands, the Almanac remembers when, how (picked
 up, looted, bought, given, made at the Melter) and where, and tells you on the PDA. Your finds are

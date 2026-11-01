@@ -333,8 +333,12 @@ local function put_icon(xml, parent, frame, sec)
     icon:SetWndPos(vector2():set(p.x + (fw - w) / 2, p.y + (fh - h) / 2))
 end
 
--- the inventory's stat card rows for an artifact, in its order; returns the next y
-local function card(entry, sec, y)
+-- the inventory's stat card rows for an artifact, in its order; returns the next y. A row is the
+-- inventory's (utils.xml stats_box; utils_16.xml on a widescreen, which the engine loads in its
+-- place), whose label wraps in its column (125 wide, 100 on a widescreen) and grows past the row
+-- (a long Russian one does): each label is measured in a see-through text of the same size
+-- (entry_card_cap), and the rows under a wrapped one move down by what it grew
+local function card(xml, entry, sec, y)
     local tbl = utils_ui.get_stats_table(sec)
     if not tbl then
         return y
@@ -344,11 +348,19 @@ local function card(entry, sec, y)
         stats[#stats + 1] = { stat = stat, gr = gr }
     end
     table.sort(stats, function(a, b) return (a.gr.index or 0) < (b.gr.index or 0) end)
+    local probe = xml:InitTextWnd("entry_card_cap", entry)
+    probe:SetWndSize(vector2():set(utils_xml.is_widescreen() and 100 or 125, probe:GetHeight()))
+    probe:SetTextColor(GetARGB(0, 0, 0, 0))
+    probe:SetText("A")
+    probe:AdjustHeightToText()
+    local one = probe:GetHeight()
     for _, s in ipairs(stats) do
         local ok, st = pcall(utils_ui.get_stats_xml, entry, nil, sec, s.gr, s.stat)
         if ok and st then
             st:SetWndPos(vector2():set(0, y))
-            y = y + st:GetHeight()
+            probe:SetText(game.translate_string(s.gr.name or ""))
+            probe:AdjustHeightToText()
+            y = y + st:GetHeight() + math.max(0, probe:GetHeight() - one)
         end
     end
     return y
@@ -418,7 +430,7 @@ function AlmanacPage:ShowEntry(sec)
     end
     if e.known then
         y = y + GAP
-        y = card(entry, sec, y)
+        y = card(xml, entry, sec, y)
         if e.description and e.description ~= "" then
             y = y + GAP
             line("entry_line", e.description, "body")
