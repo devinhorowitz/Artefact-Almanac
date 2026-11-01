@@ -23,5 +23,9 @@
   what it goes into, and how much you still need. Open it from Mod App Creator's tile, its own PDA
   tab, or a key that opens it flat (MCM). Artifacts you haven't met stay unknown unless MCM's "Show
   everything" is on.
+- **Finds:** the first time an artifact comes into your hands, the Almanac remembers it: the date,
+  how (picked up, looted, bought, given, made at the Melter) and where, shown on its page, with a
+  PDA message (MCM's "Messages" turns them off). Found artifacts stay known. They're kept in your
+  save under the Almanac's own key; a save loads fine with the Almanac removed.
 - **`tools/build.py`** checks the mod (scripts compile under LuaJIT 2.0, versions match, tests
   pass) and installs it into MO2.

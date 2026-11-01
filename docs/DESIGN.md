@@ -139,9 +139,17 @@ junk, tiers 2-5, others) and counts, the artifacts of one, and the entry: the in
 card (GAMMA's caps included), the game's description, the detectors, where the Zone makes it, the
 recipe and its book, what it goes into, the totals from scratch, and what's still missing with what
 the player carries. It opens three ways: Mod App Creator's tile by default when MAC is installed,
-its own tab (MCM, or always without MAC), or an MCM key that opens it flat. For now an artifact is
-known while it's carried or once its Guide article is open; the discovery slice keeps finds in the
-save.
+its own tab (MCM, or always without MAC), or an MCM key that opens it flat.
+
+**Finds** (`almanac_found.script`, checked in game 2026-11-01): an artifact is found the first time
+one enters the inventory, however it came (picked up, looted from a stash or a body, bought, given,
+made at the Melter, or already in the pack at a load); a container counts as the artifact it holds.
+Each find keeps its date, way and place (a game vertex and position, put into words when shown:
+"picked up in Darkscape, at the sawmill"), and a new one is a PDA message unless MCM's "Messages" is
+off. A found artifact stays known. The finds are the save's only Almanac state, under
+`m_data.almanac` (schema 1, plain values); a save loads cleanly with the Almanac removed, the key
+left unread. Still to come: learning of an artifact without holding one (Ecologist talks, PDAs,
+news, tasks).
 
 **One entry per artifact** of kind `i_arty` or `i_arty_junk`, with its containers folded in. An
 artifact that never turns up short of console commands stays out of the counts, and the source

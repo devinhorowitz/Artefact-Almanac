@@ -27,7 +27,7 @@ TREES = os.path.join(SCRIPTS, "almanac_trees.script")
 MUTANTS = {
     "carried": ("    if have and (have[sec] or 0) > 0 then\n", "    if false then\n"),
     "guide": ('return ok and open == true', 'return false'),
-    "jailbreak": ("    if jailbreak() then\n        return true\n    end\n    if have", "    if have"),
+    "jailbreak": ("    if jailbreak() then\n        return true\n    end\n    if found(sec)", "    if found(sec)"),
     "unknown_leaks": ('        return { sec = sec, known = false, name = t("st_almanac_unknown"),',
                       '        return { sec = sec, known = false, name = a.name,'),
     "listed": ("    return known(a.sec, have) or turns_up(a)\n", "    return true\n"),
@@ -44,6 +44,8 @@ MUTANTS = {
     "into_depth": ('u.depth == 1 and name or f("st_almanac_into_later", name)', "name"),
     "need_missing": ('for _, l in ipairs(count_lines(nd.missing, "warn")) do', 'for _, l in ipairs({}) do'),
     "sort_quotes": ("""return string.lower((name:gsub('^[%s"\\'\\171\\187]+', "")))""", "return string.lower(name)"),
+    "found_known": ("    if found(sec) then\n        return true\n    end\n", ""),
+    "found_count": ("        if found(sec) then\n            n = n + 1\n", "        if true then\n            n = n + 1\n"),
     "group_hidden": ('        if total > 0 or g.id == "all" then\n', "        if true then\n"),
 }
 
@@ -108,6 +110,15 @@ CAT = {
 }
 CAT.order = { "a_junk", "b", "c", "j2", "k", "q", "w", "z" }
 almanac_data = { catalog = function() return CAT end }
+FOUND = {}
+almanac_found = {
+    is_found = function(sec) return FOUND[sec] ~= nil end,
+    found_at = function(sec) return FOUND[sec] end,
+    date_of = function(at) return at.date end,
+    describe = function(at) return at.how end,
+}
+STR.st_almanac_found_on = "Found %s: %s"
+STR.st_almanac_not_found = "Not found"
 """
 
 
@@ -194,6 +205,13 @@ def main():
         eq("into", B["st_almanac_h_into"], [("Cee", "body"), ('"Kay"', "body")])
         eq("totals", B["st_almanac_h_totals"], [("1 crafts, 1 bottom, 5 parts", "body"), ("Junk A x1", "body"), ("Paw x5", "dim")])
         eq("need", B["st_almanac_h_need"], [("1 crafts, missing 3", "body"), ("Paw x3", "warn")])
+        # a find makes it known, after the pack is empty again, and the entry says when and how
+        g.FOUND["z"] = lua.table_from({"date": "14.05.2012", "how": "picked up"})
+        eq("known by a find", (P.known("z", none), [r[0] for r in rows("t4", none) if r[2]]), (True, ["z"]))
+        eq("found line", (P.entry("z", none).found[1], P.entry("z", none).found[2]), ("Found 14.05.2012: picked up", "good"))
+        eq("not found line", P.entry("b", carry_b).found[1], "Not found")
+        eq("counts", list(P.counts(none)), [1, 7, 1])
+        g.FOUND["z"] = None
         e = entry("c", lua.table_from({"c": 1}))
         B = dict(e["blocks"])
         eq("where c", B["st_almanac_h_where"], [("DAO: lvl3, lvl2", "body"), ("DAO anywhere", "body")])
