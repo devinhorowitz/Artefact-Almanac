@@ -28,6 +28,11 @@ scratch, and how much you still lack with what you carry (with Craft From Stashe
 within its range count too, as at the workshop). Every artifact an entry names is a link to its own
 entry. In English and Russian.
 
+**The crafting tree.** From an artifact's recipe, its whole tree, layer by layer: the artifact at the
+top, each craft's artifacts on the row below, down to the ones only the Zone makes. Each artifact
+shows the mutant parts its own craft takes against what you carry, and each row the book its crafts
+need and whether you've read it. An artifact you already carry cuts its branch.
+
 ![The Compass's tree: what's still missing with what you carry](media/compass-tree.jpg)
 
 **Open it your way:** its own PDA tab, Mod App Creator's tile (if you have MAC; MCM swaps it for the

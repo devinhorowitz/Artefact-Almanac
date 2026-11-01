@@ -103,6 +103,38 @@
 		<text font="letterica16" r="200" g="200" b="200" align="l" vert_align="t" complex_mode="1"/>
 	</entry_line>
 
+	<!-- the crafting tree, over the tabs, list and entry while it's open: Back, its title and
+	     totals, then its layers in a scroll view, which ui_almanac's ShowTree lays out -->
+	<tree_back x="28" y="145" width="76" height="22" stretch="1" check_mode="0">
+		<texture>almanac_tab</texture>
+	</tree_back>
+	<tree_back_text x="32" y="145" width="72" height="22">
+		<text font="letterica16" r="120" g="175" b="230" align="l" vert_align="c">st_almanac_tree_back</text>
+	</tree_back_text>
+	<tree_title x="110" y="143" width="678" height="20">
+		<text font="letterica18" r="238" g="196" b="112" align="l" vert_align="c"/>
+	</tree_title>
+	<tree_sum x="110" y="162" width="678" height="18">
+		<text font="letterica16" r="140" g="140" b="140" align="l" vert_align="c"/>
+	</tree_sum>
+	<tree_view x="28" y="186" width="764" height="492" always_show_scroll="0" stretch="1"/>
+	<!-- built per artifact inside it: the canvas; per row its book and crafts; per artifact a block
+	     with its icon, name, a status line and a line per part; the wires between -->
+	<tree_canvas x="0" y="0" width="748" height="400" stretch="1"/>
+	<tree_label x="0" y="0" width="74" height="18">
+		<text font="letterica16" r="238" g="196" b="112" align="l" vert_align="t" complex_mode="1"/>
+	</tree_label>
+	<tree_node x="0" y="0" width="160" height="40" stretch="1"/>
+	<tree_name x="0" y="0" width="120" height="20">
+		<text font="letterica18" r="120" g="175" b="230" align="l" vert_align="t" complex_mode="1"/>
+	</tree_name>
+	<tree_text x="0" y="0" width="120" height="18">
+		<text font="letterica16" r="200" g="200" b="200" align="l" vert_align="t" complex_mode="1"/>
+	</tree_text>
+	<tree_wire x="0" y="0" width="2" height="2" stretch="1">
+		<texture r="110" g="110" b="110">almanac_px</texture>
+	</tree_wire>
+
 	<!-- footer: the jailbreak line while MCM shows everything, and the app and its version -->
 	<rule_foot x="28" y="681" width="764" height="1" stretch="1">
 		<texture r="90" g="90" b="90">almanac_px</texture>

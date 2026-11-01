@@ -264,4 +264,52 @@
 	<string id="ui_mcm_almanac_about">
 		<text>Альманах открывается тремя способами, на ваш выбор: собственная вкладка КПК, плитка Mod App Creator или клавиша выше.</text>
 	</string>
+	<string id="st_almanac_tree_open">
+		<text>Дерево изготовления, слой за слоем</text>
+	</string>
+	<string id="st_almanac_tree_title">
+		<text>%s: дерево изготовления</text>
+	</string>
+	<string id="st_almanac_tree_sum">
+		<text>Изготовлений: %s, слоёв: %s. Артефактов, которые создаёт только Зона: %s; частей мутантов: %s.</text>
+	</string>
+	<string id="st_almanac_tree_back">
+		<text>&lt; Назад</text>
+	</string>
+	<string id="st_almanac_tree_nobook">
+		<text>Без книги</text>
+	</string>
+	<string id="st_almanac_tree_crafts">
+		<text>Изготовлений: %s</text>
+	</string>
+	<string id="st_almanac_tree_unread">
+		<text>ещё не прочитана</text>
+	</string>
+	<string id="st_almanac_tree_zone">
+		<text>Только Зона</text>
+	</string>
+	<string id="st_almanac_tree_zone_sub">
+		<text>создаёт эти</text>
+	</string>
+	<string id="st_almanac_tree_carried">
+		<text>есть у вас</text>
+	</string>
+	<string id="st_almanac_tree_carried_n">
+		<text>у вас есть: %s</text>
+	</string>
+	<string id="st_almanac_tree_under">
+		<text>не нужен</text>
+	</string>
+	<string id="st_almanac_tree_find">
+		<text>найдите один</text>
+	</string>
+	<string id="st_almanac_tree_find_n">
+		<text>найдите: %s</text>
+	</string>
+	<string id="st_almanac_tree_find_more">
+		<text>найдите ещё: %s</text>
+	</string>
+	<string id="st_almanac_tree_partial">
+		<text>у вас есть %s из %s</text>
+	</string>
 </string_table>

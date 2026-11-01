@@ -11,6 +11,7 @@ the Zone makes it (a field, Dynamic Anomalies, a recipe); a known one is always 
     almanac_page.rows(group)         the middle column: { { sec, name, known }, ... }
     almanac_page.entry(sec, have)    the right column: { name, sec, known, blocks = { { heading,
                                      lines = { { text, role }, ... } }, ... } }
+    almanac_page.tree(sec, have)     the crafting tree view: its layers, rows and nodes in words
 --]]
 
 VERSION = "1.0.0"
@@ -102,6 +103,15 @@ local _have, _supply, _range
 -- what the player carries, read once per page fill (the UI passes it in)
 local function carry(have)
     return have or _have or {}
+end
+
+-- what the page crafts with, and the stash range: a caller's have alone; the page's own fill, its
+-- supply (the stashes in range too)
+local function supply_for(have)
+    if have == nil and _supply then
+        return _supply, _range
+    end
+    return carry(have), nil
 end
 
 -- what the player carries (what's known by it), and what he can craft with: with Craft From
@@ -351,6 +361,8 @@ local function made_block(C, a, eager)
     for i, key in ipairs(a.made_by) do
         local r = by_key[key]
         if r and i == 1 then
+            -- the whole tree, layer by layer, in the page's tree view
+            lines[#lines + 1] = { t("st_almanac_tree_open"), "body", a.sec, "tree" }
             local unread = not almanac_trees.book_known(r.book)
             lines[#lines + 1] = { f("st_almanac_made_book", book_text(r.book)), unread and "warn" or "body" }
             local src = unread and source_text(C, r.book)
@@ -494,12 +506,8 @@ end
 -- the entry for an artifact, or for an unknown one only that it's unknown
 function entry(sec, have)
     -- the page's own fill crafts with its supply (the stashes in range too); a caller's have alone
-    local supply, range = have, nil
-    if have == nil and _supply then
-        supply, range = _supply, _range
-    end
+    local supply, range = supply_for(have)
     have = carry(have)
-    supply = supply or have
     local C = almanac_data.catalog()
     local a = C.artifacts[sec]
     if not a then
@@ -537,6 +545,97 @@ function entry(sec, have)
     put(totals_block(C, a, eager))
     put(need_block(C, a, supply, eager, range))
     return e
+end
+
+-- a book as a tree row names it: "Vol. 2" from "The Art of Artefacts Fusion Vol. 2" (its last
+-- word with a digit and the word before), else its whole name; a recipe set that is no item, "No book"
+function tree_book(book)
+    if not ini_sys:section_exist(book) then
+        return t("st_almanac_tree_nobook")
+    end
+    local n = name_of(book)
+    return n:match("(%S+%s+%S*%d%S*)%s*$") or n
+end
+
+-- a part's or an artifact's count against what's held: "1/4", and its role
+local function held(got, n)
+    return string.format("%d/%d", got, n), got >= n and "good" or (got == 0 and "warn" or "heading")
+end
+
+-- the crafting tree's words, on almanac_trees.layers: { title, sum, leaves, rows = { { label,
+-- label_role, sub, unread, nodes }, ... } }; each node gets its name, role ("link", or "dim" under a
+-- carried one), status ({ text, role } or nil) and lines, a part each ({ name, count, role }). Uses
+-- what the page crafts with (the stashes in range too), as the entry's last block does. nil when
+-- nothing makes it
+function tree(sec, have)
+    local supply = supply_for(have)
+    local C = almanac_data.catalog()
+    local a = C.artifacts[sec]
+    local eager = almanac_trees.eager_now()
+    local L = a and almanac_trees.layers(sec, supply, eager, C)
+    if not L then
+        return nil
+    end
+    local out = { title = f("st_almanac_tree_title", a.name), leaves = L.leaves, rows = {}, root = L.root }
+    local layers = 0
+    for _, nodes in ipairs(L.rows) do
+        local books, crafts, unread, order = {}, 0, false, {}
+        for _, n in ipairs(nodes) do
+            local dim = n.state == "under"
+            n.name = C.artifacts[n.sec] and C.artifacts[n.sec].name or name_of(n.sec)
+            n.role = dim and "dim" or "link"
+            if n.state == "carried" then
+                n.status = { n.n == 1 and t("st_almanac_tree_carried") or f("st_almanac_tree_carried_n", n.n), "good" }
+            elseif n.state == "under" then
+                n.status = { t("st_almanac_tree_under"), "dim" }
+            elseif n.state == "find" then
+                local rest = n.n - n.got
+                local s = n.got > 0 and f("st_almanac_tree_find_more", rest)
+                    or (rest == 1 and t("st_almanac_tree_find") or f("st_almanac_tree_find_n", rest))
+                n.status = { s, "warn" }
+            elseif n.state == "craft" and n.got > 0 then
+                n.status = { f("st_almanac_tree_partial", n.got, n.n), "heading" }
+            end
+            -- a carried one's parts aren't needed either
+            local spare = dim or n.state == "carried"
+            n.lines = {}
+            for _, p in ipairs(n.parts) do
+                local count, role = held(p.got, p.n)
+                n.lines[#n.lines + 1] = { sec = p.sec, name = name_of(p.sec), count = count, role = spare and "dim" or role }
+            end
+            if n.book then
+                if not books[n.book] then
+                    books[n.book] = true
+                    order[#order + 1] = n.book
+                end
+                if n.state == "top" or n.state == "craft" then
+                    crafts = crafts + n.n - n.got
+                end
+            end
+        end
+        local row = { nodes = nodes }
+        if #order > 0 then
+            layers = layers + 1
+            local names = {}
+            for _, b in ipairs(order) do
+                names[#names + 1] = tree_book(b)
+                unread = unread or not almanac_trees.book_known(b)
+            end
+            row.label, row.label_role = table.concat(names, " / "), unread and "warn" or "heading"
+            row.sub = f("st_almanac_tree_crafts", crafts)
+            row.unread = unread and t("st_almanac_tree_unread") or nil
+        else
+            row.label, row.label_role, row.sub = t("st_almanac_tree_zone"), "heading", t("st_almanac_tree_zone_sub")
+        end
+        out.rows[#out.rows + 1] = row
+    end
+    local tt = almanac_trees.totals(sec, eager, C)
+    local n_arts = 0
+    for _, n in pairs(tt.artifacts) do
+        n_arts = n_arts + n
+    end
+    out.sum = f("st_almanac_tree_sum", tt.crafts, layers, n_arts, tt.part_count)
+    return out
 end
 
 -- the header's counts: known of listed, and how many found

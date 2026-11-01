@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **The crafting tree:** an artifact's recipe links to its whole tree, layer by layer, in the page's
+  place: the artifact at the top, each craft's artifacts on the row below, wired to it, down to the
+  ones only the Zone makes. Each shows its icon, its name (a link to its entry) and the mutant parts
+  its own craft takes, counted against what you carry; each row, the book its crafts need and
+  whether it's read. An artifact you carry cuts its branch, which dims. Back, or Escape flat,
+  returns to the entry.
+- A link is followed at the next frame rather than inside its own click.
+
 ## 1.0.0 — 2026-11-01
 
 - **The census** (`tools/census.py`): a read-only pass over an install's configs, as the game

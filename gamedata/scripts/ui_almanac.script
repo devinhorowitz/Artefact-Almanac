@@ -10,6 +10,12 @@ inventory's own (utils_ui.get_stats_table and get_stats_xml), so its numbers are
 The same page opens flat, on a key set in MCM: a window of its own in the 2D PDA's frame, drawn
 straight to the screen and so as sharp as the inventory (the 3D PDA softens its pages). Escape or
 the key again closes it.
+
+An entry's recipe links to the crafting tree, which takes the tabs', list's and entry's place
+until Back (or Escape, flat): a row per layer, the artifact at the top and each craft's artifacts
+on the row below, wired to it, each with its icon, name (a link), a status and the parts its own
+craft takes against what the player holds; each row says which book its crafts need
+(almanac_page.tree has the words, almanac_trees.layers the places).
 --]]
 
 local SINGLETON, FLAT
@@ -31,6 +37,10 @@ local ROLES = {
     good = { 56, 209, 115 }, warn = { 238, 155, 23 }, link = { 120, 175, 230 },
 }
 local MAX_LINKS = 48    -- an entry's lines that link to another artifact's entry, at most
+-- the tree view's measures: the rows' book column; an artifact's column, at most; an artifact's
+-- icon box (its width before the widescreen squeeze) and a part's; between two rows, where the
+-- wires run
+local TREE = { label_w = 80, slot_max = 176, icon_w = 30, icon_h = 34, part_w = 20, part_h = 13, gap = 26 }
 
 local function argb(role)
     local c = ROLES[role] or ROLES.body
@@ -41,8 +51,9 @@ local function say(msg)
     printf("[almanac-page] %s", tostring(msg))
 end
 
--- where the player was, kept while the game runs: the group and the artifact
-local view = { group = "all", sec = nil }
+-- where the player was, kept while the game runs: the group, the artifact, and the artifact whose
+-- tree is open
+local view = { group = "all", sec = nil, tree = nil }
 
 -- a list's row: an artifact's name
 class "AlmanacRow" (CUIListBoxItem)
@@ -93,8 +104,20 @@ function AlmanacPage:__init(flat) super()
     self.art_list = xml:InitListBox("art_list", self)
     self:Register(self.art_list, "art_list")
     self:AddCallback("art_list", ui_events.LIST_ITEM_SELECT, self.OnArtifact, self)
-    xml:InitStatic("rule_art", self)
+    self.rule_art = xml:InitStatic("rule_art", self)
     self.detail = xml:InitScrollView("detail", self)
+    -- the crafting tree, hidden until an entry's link opens it
+    self.tree_back = xml:Init3tButton("tree_back", self)
+    self:Register(self.tree_back, "tree_back")
+    self:AddCallback("tree_back", ui_events.BUTTON_CLICKED, self.CloseTree, self)
+    self.tree_title = xml:InitTextWnd("tree_title", self)
+    self.tree_sum = xml:InitTextWnd("tree_sum", self)
+    self.tree_view = xml:InitScrollView("tree_view", self)
+    self.tree_parts = { self.tree_back, xml:InitTextWnd("tree_back_text", self), self.tree_title, self.tree_sum,
+                        self.tree_view }
+    for _, w in ipairs(self.tree_parts) do
+        w:Show(false)
+    end
     -- an entry's links: each ShowEntry registers its buttons under these names
     self.links = {}
     for k = 1, MAX_LINKS do
@@ -133,6 +156,30 @@ function AlmanacPage:Fill()
     end
     self:FillTabs()
     self:FillArtifacts()
+    -- the tree that was open, still there
+    if not (view.tree and self:ShowTree(view.tree)) then
+        view.tree = nil
+        self:Browse(true)
+    end
+end
+
+-- the tabs, list and entry, or (on = false) the crafting tree in their place
+function AlmanacPage:Browse(on)
+    for _, slot in ipairs(self.tabs) do
+        if not on then
+            slot.btn:Show(false)
+            slot.bg:Show(false)
+        end
+    end
+    for _, w in ipairs({ self.tab_on, self.tab_line, self.list_caption, self.art_list, self.rule_art, self.detail }) do
+        w:Show(on)
+    end
+    for _, w in ipairs(self.tree_parts) do
+        w:Show(not on)
+    end
+    if on then
+        self:FillTabs()
+    end
 end
 
 -- the tabs share the row, one per group shown; each a mark and "known/total" centered, tinted
@@ -218,6 +265,11 @@ function AlmanacPage:Update()
         self:ScrollArt()
         self.art_scroll = nil
     end
+    if self.link_next then
+        local k = self.link_next
+        self.link_next = nil
+        self:FollowLink(k)
+    end
     self:LightTabs()
     self:LightLinks()
 end
@@ -236,16 +288,33 @@ function AlmanacPage:LightLinks()
         over = over == true
         if over ~= l.over then
             l.over = over
-            l.text:SetTextColor(argb(over and "heading" or "link"))
+            l.text:SetTextColor(argb(over and "heading" or (l.role or "link")))
         end
     end
 end
 
+-- a link is followed at the next update, not in its own click: following it clears the view its
+-- button is in
 function AlmanacPage:OnLink(k)
+    self.link_next = k
+end
+
+-- an artifact's entry, or its tree for the recipe's tree link
+function AlmanacPage:FollowLink(k)
     local l = self.links[k]
-    if l then
-        self:GoTo(l.sec)
+    if not l then
+        return
     end
+    if l.tree then
+        self:ShowTree(l.sec)
+        return
+    end
+    if view.tree then
+        view.tree = nil
+        self.tree_view:Clear()
+        self:Browse(true)
+    end
+    self:GoTo(l.sec)
 end
 
 -- an artifact's entry, in the tab shown if it's listed there, else in All
@@ -304,8 +373,8 @@ function AlmanacPage:OnArtifact()
     end
 end
 
--- an artifact's inventory icon in the frame, at most at its own size, centered
-local function put_icon(xml, parent, frame, sec)
+-- an item's inventory icon in a box, at most at its own size, centered; the icon, or nil
+local function fit_icon(xml, parent, sec, bx, by, fw, fh)
     local tex = utils_xml.get_icons_texture(sec)
     local grid = utils_xml.get_item_axis(sec)
     local x1, y1, x2, y2 = utils_xml.get_item_axis(sec, nil, true)
@@ -321,7 +390,6 @@ local function put_icon(xml, parent, frame, sec)
     local w0, h0 = x2 - x1, y2 - y1
     local sw, sh = grid.w or w0, grid.h or h0
     local wide = utils_xml.is_widescreen() and 0.8 or 1
-    local fw, fh = frame:GetWidth(), frame:GetHeight()
     local k = math.min(fw / (sw * wide), fh / sh, 1)
     local w, h = sw * wide * k, sh * k
     local icon = xml:InitStatic("entry_icon", parent)
@@ -329,8 +397,14 @@ local function put_icon(xml, parent, frame, sec)
     icon:SetTextureRect(Frect():set(x1, y1, x2, y2))
     icon:SetStretchTexture(true)
     icon:SetWndSize(vector2():set(w, h))
+    icon:SetWndPos(vector2():set(bx + (fw - w) / 2, by + (fh - h) / 2))
+    return icon
+end
+
+-- an artifact's inventory icon in the frame
+local function put_icon(xml, parent, frame, sec)
     local p = frame:GetWndPos()
-    icon:SetWndPos(vector2():set(p.x + (fw - w) / 2, p.y + (fh - h) / 2))
+    return fit_icon(xml, parent, sec, p.x, p.y, frame:GetWidth(), frame:GetHeight())
 end
 
 -- the inventory's stat card rows for an artifact, in its order; returns the next y. A row is the
@@ -386,8 +460,8 @@ function AlmanacPage:ShowEntry(sec)
         y = 104
     end
     -- a line; one naming another artifact (link) in the link color, with a clear button over it
-    -- that goes to that artifact's entry
-    local function line(node, s, role, link)
+    -- that goes to that artifact's entry, or (tree) opens the artifact's crafting tree
+    local function line(node, s, role, link, tree)
         local t = xml:InitTextWnd(node, entry)
         t:SetWndPos(vector2():set(0, y))
         t:SetText(s)
@@ -408,7 +482,7 @@ function AlmanacPage:ShowEntry(sec)
             btn:SetWndPos(vector2():set(0, y))
             btn:SetWndSize(vector2():set(entry:GetWidth(), t:GetHeight()))
             self:Register(btn, "link_" .. k)
-            self.links[k] = { sec = link, text = t, btn = btn }
+            self.links[k] = { sec = link, text = t, btn = btn, tree = tree and true or nil }
         end
         y = y + t:GetHeight() + 2
         return t
@@ -442,12 +516,132 @@ function AlmanacPage:ShowEntry(sec)
             line("entry_heading", b.heading)
         end
         for _, l in ipairs(b.lines) do
-            line("entry_line", l[1], l[2], l[3])
+            line("entry_line", l[1], l[2], l[3], l[4] == "tree")
         end
     end
     entry:SetWndSize(vector2():set(entry:GetWidth(), y + GAP))
     self.detail:AddWindow(entry, true)
     entry:SetAutoDelete(true)
+end
+
+-- an artifact's crafting tree in the tabs', list's and entry's place: false when nothing makes it.
+-- Each row is built at its own top as a block per artifact (measured: a name or a part can wrap),
+-- the next row below the tallest; then the wires, from each icon down to a bar over its children
+function AlmanacPage:ShowTree(sec)
+    local tr = sec and almanac_page.tree(sec)
+    if not tr then
+        return false
+    end
+    view.tree = sec
+    self:Browse(false)
+    self.links = {}
+    self.tree_view:Clear()
+    self.tree_title:SetText(tr.title)
+    self.tree_sum:SetText(tr.sum)
+    local xml = self.xml
+    local canvas = xml:InitStatic("tree_canvas", nil)
+    local W = canvas:GetWidth()
+    local area = W - TREE.label_w
+    local slot = math.min(TREE.slot_max, area / math.max(1, tr.leaves))
+    local x0 = TREE.label_w + (area - slot * tr.leaves) / 2
+    local function text(node, parent, x, y, w, s, role)
+        local t = xml:InitTextWnd(node, parent)
+        t:SetWndPos(vector2():set(x, y))
+        t:SetWndSize(vector2():set(w, t:GetHeight()))
+        t:SetText(s)
+        t:SetTextColor(argb(role))
+        t:AdjustHeightToText()
+        return t
+    end
+    local function faded(icon, role)
+        if icon and role == "dim" then
+            icon:SetTextureColor(GetARGB(90, 255, 255, 255))
+        end
+    end
+    local placed = {}   -- node -> its icon's center and its row's top
+    local top = 4
+    for _, row in ipairs(tr.rows) do
+        local rc = xml:InitStatic("tree_node", canvas)
+        rc:SetWndPos(vector2():set(0, top))
+        -- the row's book, its crafts, and whether the book is read
+        local lw = TREE.label_w - 6
+        local h = text("tree_label", rc, 0, 0, lw, row.label, row.label_role):GetHeight()
+        h = h + text("tree_text", rc, 0, h, lw, row.sub, "dim"):GetHeight()
+        if row.unread then
+            h = h + text("tree_text", rc, 0, h, lw, row.unread, "warn"):GetHeight()
+        end
+        for _, n in ipairs(row.nodes) do
+            local bx = x0 + (n.slot - 0.5) * slot + 3
+            local tx = bx + TREE.icon_w + 4
+            local tw = slot - 6 - TREE.icon_w - 4
+            faded(fit_icon(xml, rc, n.sec, bx, 0, TREE.icon_w, TREE.icon_h), n.role)
+            local name = text("tree_name", rc, tx, 0, tw, n.name, n.role)
+            if #self.links < MAX_LINKS then
+                local k = #self.links + 1
+                local btn = xml:Init3tButton("entry_link", rc)
+                btn:SetWndPos(vector2():set(tx, 0))
+                btn:SetWndSize(vector2():set(tw, name:GetHeight()))
+                self:Register(btn, "link_" .. k)
+                self.links[k] = { sec = n.sec, text = name, btn = btn, role = n.role }
+            end
+            local y = name:GetHeight()
+            if n.status then
+                y = y + text("tree_text", rc, tx, y, tw, n.status[1], n.status[2]):GetHeight()
+            end
+            -- a line per part: its icon, its name and what's held of what it takes, colored
+            for _, l in ipairs(n.lines) do
+                faded(fit_icon(xml, rc, l.sec, tx, y + 2, TREE.part_w, TREE.part_h), l.role)
+                local c = ROLES[l.role] or ROLES.body
+                local s = string.format("%s %%c[255,%d,%d,%d]%s", l.name, c[1], c[2], c[3], l.count)
+                local lt = text("tree_text", rc, tx + TREE.part_w + 3, y, tw - TREE.part_w - 3, s,
+                                l.role == "dim" and "dim" or "body")
+                y = y + math.max(TREE.part_h + 3, lt:GetHeight())
+            end
+            h = math.max(h, y, TREE.icon_h)
+            placed[n] = { cx = bx + TREE.icon_w / 2, top = top }
+        end
+        rc:SetWndSize(vector2():set(W, h))
+        top = top + h + TREE.gap
+    end
+    -- the wires: down from an artifact's icon, along a bar, down to each of its children's
+    local thin = 2 * (utils_xml.is_widescreen() and 0.8 or 1)
+    local function wire(x, y, w, h, dim)
+        if w > 0 and h > 0 then
+            local s = xml:InitStatic("tree_wire", canvas)
+            s:SetWndPos(vector2():set(x, y))
+            s:SetWndSize(vector2():set(w, h))
+            if dim then
+                s:SetTextureColor(GetARGB(255, 60, 60, 60))
+            end
+        end
+    end
+    for n, p in pairs(placed) do
+        if #n.kids > 0 and placed[n.kids[1]] then
+            local dim = n.state == "under" or n.state == "carried"
+            local bar = placed[n.kids[1]].top - TREE.gap / 2
+            local from = p.top + TREE.icon_h + 2
+            wire(p.cx - thin / 2, from, thin, bar - from, dim)
+            local lo, hi = p.cx, p.cx
+            for _, k in ipairs(n.kids) do
+                local q = placed[k]
+                lo, hi = math.min(lo, q.cx), math.max(hi, q.cx)
+                wire(q.cx - thin / 2, bar, thin, q.top - 2 - bar, dim)
+            end
+            wire(lo - thin / 2, bar - 1, hi - lo + thin, 2, dim)
+        end
+    end
+    canvas:SetWndSize(vector2():set(W, top - TREE.gap + 8))
+    self.tree_view:AddWindow(canvas, true)
+    canvas:SetAutoDelete(true)
+    return true
+end
+
+-- back from the tree to the entry
+function AlmanacPage:CloseTree()
+    view.tree = nil
+    self.tree_view:Clear()
+    self:Browse(true)
+    self:ShowEntry(view.sec)
 end
 
 -- Back to Mod App Creator's launcher, where the tile opened the page
@@ -475,16 +669,21 @@ function AlmanacPage:Close()
     end
 end
 
--- flat, Escape and the page's key close it; in the PDA, the keys are the PDA's
+-- flat, Escape and the page's key close it, Escape the tree first; in the PDA, the keys are the PDA's
 function AlmanacPage:OnKeyboard(dik, action)
     local res = CUIScriptWnd.OnKeyboard(self, dik, action)
     if res then
         return res
     end
-    if self.flat and action == ui_events.WINDOW_KEY_PRESSED
-        and (dik == DIK_keys.DIK_ESCAPE or dik == almanac_tab.key()) then
-        self:Close()
-        return true
+    if self.flat and action == ui_events.WINDOW_KEY_PRESSED then
+        if dik == DIK_keys.DIK_ESCAPE and view.tree then
+            self:CloseTree()
+            return true
+        end
+        if dik == DIK_keys.DIK_ESCAPE or dik == almanac_tab.key() then
+            self:Close()
+            return true
+        end
     end
     return false
 end
@@ -492,8 +691,18 @@ end
 -- the page next opens on an artifact's entry, in the "all" group; a page shown now goes there at
 -- once (another app's link, or a test)
 function show_next(sec)
-    view.group, view.sec = "all", sec
+    view.group, view.sec, view.tree = "all", sec, nil
     -- false, not nil, for a page not made yet: ipairs stops at the first nil
+    for _, w in ipairs({ SINGLETON or false, FLAT or false }) do
+        if w and w:IsShown() then
+            w:Reset()
+        end
+    end
+end
+
+-- the same, on the artifact's crafting tree
+function show_tree(sec)
+    view.group, view.sec, view.tree = "all", sec, sec
     for _, w in ipairs({ SINGLETON or false, FLAT or false }) do
         if w and w:IsShown() then
             w:Reset()
@@ -504,6 +713,11 @@ end
 -- the entry's scroll view, for a test that scrolls it
 function detail_of(w)
     return w and w.detail
+end
+
+-- the tree's scroll view, the same
+function tree_of(w)
+    return w and w.tree_view
 end
 
 -- the page for the PDA's tab or MAC's tile, filled afresh each time it's shown
