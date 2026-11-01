@@ -13,6 +13,7 @@ inside the census.
 """
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -48,6 +49,7 @@ MUTANTS = {
                           '        f:close()\n        local ok2, err2 = true, nil\n'),
     "quote": ("if ch == '\"' then return '\\\\\"' end", "if ch == '\"' then return '\"' end"),
     "unsorted": ("        table.sort(keys)\n", ""),
+    "no_real": ('    c.real = os.date("%Y-%m-%d %H:%M:%S")\n', ""),
 }
 
 WORLD = r"""
@@ -184,6 +186,7 @@ def main():
         eq("cause", c["cause"], "load")
         eq("level", c["level"], "l01_escape")
         eq("date", c["date"], "2012-05-14 08:30")
+        eq("real time stamped", bool(re.match(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$", c.get("real", ""))), True)
         esc = c["levels"]["l01_escape"]
         gar = c["levels"]["l02_garbage"]
         eq("Cordon free", esc["free"], 4)

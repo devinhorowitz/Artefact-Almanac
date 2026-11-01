@@ -129,6 +129,8 @@ function take(cause)
     local c = { v = 1, version = VERSION, cause = cause, date = game_date(), levels = {}, due = {},
                 kinds = {} }
     c.level = level and level.name and level.name() or "?"
+    -- the real time, so a test session's lines can be told from play by when it ran
+    c.real = os.date("%Y-%m-%d %H:%M:%S")
     local dao = dao_ids()
     local fields = bind_anomaly_zone and bind_anomaly_zone.parent_zones_by_artefact_id or {}
     for id = 1, MAX_ID do

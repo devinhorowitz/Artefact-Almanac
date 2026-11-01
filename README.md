@@ -26,8 +26,14 @@ appdata folder (`<Anomaly>\appdata`), with a summary line in the game's log:
 [almanac-census] 2018-11-02 08:47 (load) on k01_darkscape: 3 free here, 23 free elsewhere, 15 owned, 33 levels due, 29 ms
 ```
 
+**The catalog** (`gamedata/scripts/almanac_data.script`), what the Almanac's pages will read:
+built once per load from the running game's configs, it holds every artifact with its containers,
+tier and detectors, the workshop's recipes, each level's anomaly fields and the chance a field's pick
+names each artifact, and Dynamic Anomalies' lists. Nothing shows it yet.
+
 `python -I tools/build.py` checks the mod and installs it as the MO2 mod "Artefact Almanac"
-(`--mods <folder>` for another MO2 instance).
+(`--mods <folder>` for another MO2 instance). `python -I tools/catalog_lua.py` runs the catalog over
+an install's configs and compares it with the offline census.
 
 **The census** reads an install's configs as the game would (Mod Organizer 2's file order and
 DLTX) and writes what the Almanac will show: every artifact with its card, tier, perk and
@@ -47,6 +53,7 @@ Paths come from `ALMANAC_GAMMA`, `ALMANAC_PROFILE`, `ALMANAC_ANOMALY` and `ALMAN
 ```
 python -I tools/test_census.py
 python -I tools/test_ingame_census.py
+python -I tools/test_catalog.py
 python -I tools/mutants.py
 ```
 

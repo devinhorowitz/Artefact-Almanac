@@ -1,0 +1,331 @@
+--[[
+Artefact Almanac: the catalog.
+
+What the Almanac knows about the Zone's artifacts, read from the running game's own configs (DLTX
+included) and built once per load, on first use: every artifact and junk artifact with its
+containers, tier and the detectors that list it; the workshop's recipes; each level's anomaly
+fields and the chance a field's pick names each artifact; and Dynamic Anomalies' lists. Nothing
+here is saved or changed. tools/census.py reads the same things offline, and the tests hold the
+two to the same answers.
+
+    almanac_data.catalog()        the catalog (built on the first call after a load)
+--]]
+
+VERSION = "0.1.0"
+
+local KINDS = { i_arty = true, i_arty_junk = true }
+local CONTAINER_SUFFIXES = { "_lead_box", "_af_iam", "_af_aac", "_af_aam" }
+
+local function trim(s)
+    return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+-- a comma list's entries, trimmed, empties dropped
+function csv(s)
+    local t = {}
+    for x in string.gmatch(s or "", "[^,]+") do
+        x = trim(x)
+        if x ~= "" then
+            t[#t + 1] = x
+        end
+    end
+    return t
+end
+
+-- a section's keys and values in the order ini_file keeps them
+local function lines(ini, sec)
+    local t = {}
+    if not ini:section_exist(sec) then
+        return t
+    end
+    for i = 0, ini:line_count(sec) - 1 do
+        local _, k, v = ini:r_line_ex(sec, i, "", "")
+        t[#t + 1] = { k, v }
+    end
+    return t
+end
+
+local function sorted_keys(t)
+    local out = {}
+    for k in pairs(t) do
+        out[#out + 1] = k
+    end
+    table.sort(out)
+    return out
+end
+
+-- the section an artifact container holds, by its name's suffix (Perk-Based Artefacts' rule)
+function held_by(sec)
+    for _, suf in ipairs(CONTAINER_SUFFIXES) do
+        if #sec > #suf and sec:sub(-#suf) == suf then
+            return sec:sub(1, -#suf - 1)
+        end
+    end
+    return sec
+end
+
+-- every artifact, container and detector list, in one pass over the system configs
+local function read_items(C)
+    local containers, dets = {}, {}
+    ini_sys:section_for_each(function(sec)
+        local kind = SYS_GetParam(0, sec, "kind", "")
+        if KINDS[kind] then
+            C.artifacts[sec] = {
+                sec = sec, kind = kind,
+                name = game.translate_string(SYS_GetParam(0, sec, "inv_name", sec)),
+                tier = SYS_GetParam(2, sec, "tier"), rank = SYS_GetParam(2, sec, "af_rank"),
+                cost = SYS_GetParam(2, sec, "cost"), weight = SYS_GetParam(2, sec, "inv_weight"),
+                containers = {}, detectors = {}, fields = {}, dao = {}, dao_random = false,
+                made_by = {}, used_in = {},
+            }
+        elseif kind == "i_arty_cont" then
+            containers[#containers + 1] = sec
+        end
+        if ini_sys:line_exist(sec, "af_class_1") then
+            -- read as the engine reads a detector's list: af_class_1, 2, ... to the first gap;
+            -- a section listed twice counts once
+            local list, seen, i = {}, {}, 1
+            while ini_sys:line_exist(sec, "af_class_" .. i) do
+                local a = SYS_GetParam(0, sec, "af_class_" .. i, "")
+                if a ~= "" and not seen[a] then
+                    seen[a] = true
+                    list[#list + 1] = a
+                end
+                i = i + 1
+            end
+            dets[sec] = list
+        end
+    end)
+    for _, sec in ipairs(containers) do
+        local a = C.artifacts[held_by(sec)]
+        if a then
+            a.containers[#a.containers + 1] = sec
+        end
+    end
+    for _, a in pairs(C.artifacts) do
+        table.sort(a.containers)
+    end
+    C.detectors = dets
+    for _, d in ipairs(sorted_keys(dets)) do
+        for _, sec in ipairs(dets[d]) do
+            local a = C.artifacts[sec]
+            if a then
+                a.detectors[#a.detectors + 1] = d
+            end
+        end
+    end
+end
+
+-- the workshop's recipes, read as UIWorkshopCraft:LoadRecipes reads them: numbered sections, each
+-- key without its first two characters, 6, 8 or 10 fields; the ones that make or take an artifact
+local function read_recipes(C)
+    local ini = itms_manager and itms_manager.ini_craft
+    if not ini then
+        return
+    end
+    local ind = 1
+    while ini:section_exist(tostring(ind)) do
+        local title
+        local rows = lines(ini, tostring(ind))
+        for _, kv in ipairs(rows) do
+            if kv[1] == "title" then
+                title = kv[2]
+            end
+        end
+        for _, kv in ipairs(rows) do
+            local key, value = kv[1], kv[2]
+            local rid = key:sub(3)
+            if key ~= "title" and ini_sys:section_exist(rid) then
+                local t = {}
+                for x in string.gmatch((value or "") .. ",", "([^,]*),") do
+                    t[#t + 1] = trim(x)
+                end
+                if #t == 6 or #t == 8 or #t == 10 then
+                    local r = { section = ind, title = title, key = key, result = rid,
+                                tool = tonumber(t[1]) or 1, book = t[2], parts = {} }
+                    local takes = false
+                    for j = 3, #t, 2 do
+                        if ini_sys:section_exist(t[j]) then
+                            r.parts[#r.parts + 1] = { t[j], tonumber(t[j + 1]) or 0 }
+                            if C.artifacts[t[j]] then
+                                takes = true
+                            end
+                        end
+                    end
+                    if C.artifacts[rid] or takes then
+                        C.recipes[#C.recipes + 1] = r
+                    end
+                end
+            end
+        end
+        ind = ind + 1
+    end
+    for _, r in ipairs(C.recipes) do
+        local a = C.artifacts[r.result]
+        if a then
+            a.made_by[#a.made_by + 1] = r.key
+        end
+        for _, p in ipairs(r.parts) do
+            local b = C.artifacts[p[1]]
+            if b then
+                b.used_in[#b.used_in + 1] = r.key
+            end
+        end
+    end
+end
+
+-- artefacts.ltx's registered groups: a group bind_anomaly_zone knows, with its artifacts
+local function read_groups(C)
+    local ini = ini_file("items\\settings\\artefacts.ltx")
+    for _, kv in ipairs(lines(ini, "artefact_groups")) do
+        local g = kv[1]
+        if ini:section_exist(g) then
+            local members = {}
+            for _, m in ipairs(lines(ini, g)) do
+                if ini_sys:section_exist(m[1]) then
+                    members[#members + 1] = m[1]
+                end
+            end
+            C.groups[g] = members
+        end
+    end
+end
+
+-- the field configs the Zone's anomaly zones use: each zone's spawn settings name its config in
+-- [anomal_zone] cfg, as bind_anomaly_zone reads it; the zone's game vertex gives its level. (The
+-- engine's config file list leaves out configs\scripts, so the files can't be listed.) One entry
+-- per level and config.
+function field_files()
+    local out, seen = {}, {}
+    local sim = alife()
+    local gg = game_graph()
+    for id = 1, 65534 do
+        local se = sim:object(id)
+        if se then
+            local ok, ini = pcall(se.spawn_ini, se)
+            local cfg = ok and ini and ini:section_exist("anomal_zone") and ini:r_string_ex("anomal_zone", "cfg")
+            if cfg and cfg ~= "" then
+                local path = string.lower(cfg):gsub("/", "\\")
+                local lok, lvl = pcall(function() return sim:level_name(gg:vertex(se.m_game_vertex_id):level_id()) end)
+                lvl = lok and lvl or "?"
+                local key = lvl .. "|" .. path
+                if not seen[key] then
+                    seen[key] = true
+                    out[#out + 1] = { path = path, level = lvl, folder = path:match("^scripts\\([^\\]+)\\") }
+                end
+            end
+        end
+    end
+    table.sort(out, function(a, b) return a.path < b.path or (a.path == b.path and a.level < b.level) end)
+    return out
+end
+
+-- one field config: for each layer, the chance that one pick names each artifact (a pick takes one
+-- of the layer's groups at random, then one of the group's artifacts; a group that isn't
+-- registered spawns nothing)
+local function read_field(C, f)
+    local ini = ini_file(f.path)
+    local az = "anomal_zone"
+    local n = (ini:section_exist(az) and ini:r_float_ex(az, "layers_count")) or 1
+    f.layers = {}
+    for i = 1, n do
+        local layer = "layer_" .. i
+        local arts = ini:section_exist(layer) and ini:r_string_ex(layer, "artefacts")
+        local names = csv(arts or (ini:section_exist(az) and ini:r_string_ex(az, "artefacts")))
+        local picks, nothing = {}, 0
+        for _, g in ipairs(names) do
+            local members = C.groups[g]
+            if members and #members > 0 then
+                for _, a in ipairs(members) do
+                    picks[a] = (picks[a] or 0) + 1 / #names / #members
+                end
+            else
+                nothing = nothing + 1 / #names
+            end
+        end
+        f.layers[i] = { groups = names, picks = picks, nothing = nothing }
+    end
+    return f
+end
+
+local function read_fields(C)
+    for _, f in ipairs(field_files()) do
+        C.fields[#C.fields + 1] = read_field(C, f)
+    end
+    for _, f in ipairs(C.fields) do
+        local where = f.level or f.folder
+        for _, lay in ipairs(f.layers) do
+            for _, sec in ipairs(sorted_keys(lay.picks)) do
+                local a = C.artifacts[sec]
+                if a then
+                    a.fields[where] = a.fields[where] or {}
+                    table.insert(a.fields[where], lay.picks[sec])
+                end
+            end
+        end
+    end
+end
+
+-- Dynamic Anomalies' lists: per level, each artifact's share of the entries its pick can take
+-- (an entry it doesn't allow is picked again), and the artifacts its random pick allows
+local function read_dao(C)
+    local m = drx_da_main_artefacts
+    if not (m and type(m.allowed_artefacts) == "table") then
+        return
+    end
+    local allowed = {}
+    for _, sec in ipairs(m.allowed_artefacts) do
+        allowed[sec] = true
+        local a = C.artifacts[sec]
+        if a then
+            a.dao_random = true
+        end
+    end
+    C.dao = { allowed = allowed, chances = m.artefacts_map_chances or {}, levels = {} }
+    for lvl, list in pairs(m.artefacts_map_tiers or {}) do
+        local n, count = 0, {}
+        for _, sec in ipairs(list) do
+            if allowed[sec] then
+                n = n + 1
+                count[sec] = (count[sec] or 0) + 1
+            end
+        end
+        C.dao.levels[lvl] = count
+        for sec, k in pairs(count) do
+            local a = C.artifacts[sec]
+            if a then
+                a.dao[lvl] = k / n
+            end
+        end
+    end
+end
+
+-- build the catalog; each part fails on its own, logged, without taking the rest down
+function build()
+    local t0 = os.clock()
+    local C = { version = VERSION, artifacts = {}, detectors = {}, recipes = {}, groups = {},
+                fields = {}, dao = nil, failed = {} }
+    for _, part in ipairs({ { "items", read_items }, { "recipes", read_recipes }, { "groups", read_groups },
+                            { "fields", read_fields }, { "dao", read_dao } }) do
+        local ok, err = pcall(part[2], C)
+        if not ok then
+            C.failed[#C.failed + 1] = part[1]
+            printf("! [almanac-data] %s: %s", part[1], tostring(err))
+        end
+    end
+    C.order = sorted_keys(C.artifacts)
+    C.ms = math.floor((os.clock() - t0) * 10000 + 0.5) / 10
+    printf("[almanac-data] %s artifacts, %s recipes, %s field configs, %s ms",
+        #C.order, #C.recipes, #C.fields, C.ms)
+    return C
+end
+
+local cat
+
+-- the catalog, built once per load (a load starts the scripts afresh)
+function catalog()
+    if not cat then
+        cat = build()
+    end
+    return cat
+end
