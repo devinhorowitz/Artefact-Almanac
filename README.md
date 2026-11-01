@@ -10,6 +10,8 @@ sibling to [Seasons of the Zone](https://github.com/devinhorowitz/seasonsofthezo
 [Arsenal](https://github.com/devinhorowitz/GAMMA-Arsenal-App) and
 [Factions of the Zone](https://github.com/devinhorowitz/factionsofthezone).
 
+![The Compass in the Almanac](media/compass.jpg)
+
 ## Status
 
 1.0.0 is the first release: the almanac and the crafting trees. The survey comes next, in 1.1.
@@ -26,8 +28,14 @@ scratch, and how much you still lack with what you carry (with Craft From Stashe
 within its range count too, as at the workshop). Every artifact an entry names is a link to its own
 entry. In English and Russian.
 
+![The Compass's tree: what's still missing with what you carry](media/compass-tree.jpg)
+
 **Open it your way:** its own PDA tab, Mod App Creator's tile (if you have MAC; MCM swaps it for the
 tab), or a key (MCM) that opens it flat and sharp.
+
+![The Almanac's tile in Mod App Creator's launcher](media/launcher.jpg)
+
+![The Almanac in the 3D PDA](media/in-the-pda.jpg)
 
 **Finds.** The first time an artifact comes into your hands, the Almanac remembers when, how (picked
 up, looted, bought, given, made at the Melter) and where, and tells you on the PDA.
@@ -37,6 +45,10 @@ stalker found one, one of your tasks asks you for one, a dead stalker's PDA you 
 it, or an Ecologist tells you of it (ask them; once a day each), it stops being unknown, and its
 entry says who and where. Artifacts you haven't come to know stay unknown; MCM's "Show everything"
 opens them all.
+
+![Asking an Ecologist](media/ecologist.jpg)
+
+![What the Ecologist told you, and the artifacts you don't know yet](media/heard-of-one.jpg)
 
 It leaves the game's economy alone: no spawns, prices, loot or stats change.
 
