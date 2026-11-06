@@ -230,12 +230,53 @@ function shown_tier(a)
 end
 
 -- the kind and tier line
+-- Klondaik's names for its artifact levels (k_art_level), its own strings, as its Melter shows them
+local ART_LEVELS = {
+    [-1] = "st_art_level_m1", [0] = "st_art_level_0", [1] = "st_art_level_1", [2] = "st_art_level_2",
+    [3] = "st_art_level_3", [4] = "st_art_level_4", [5] = "st_art_level_5", [6] = "st_art_level_6",
+    [7] = "st_art_level_absolut", [8] = "st_art_level_base", [9] = "st_art_level_modificat",
+    [10] = "st_art_level_mezomodificat", [11] = "st_art_level_hypermodificat", [12] = "st_art_level_syn_absolut",
+    [13] = "st_art_level_1_unique", [14] = "st_art_level_2_unique", [15] = "st_art_level_3_unique",
+    [16] = "st_art_level_4_unique", [17] = "st_art_level_absolute_unique",
+}
+
 function kind_line(a)
+    local s
     if a.kind == "i_arty_junk" then
-        return t("st_almanac_kind_junk")
+        s = t("st_almanac_kind_junk")
+    else
+        local n = shown_tier(a)
+        s = n and f("st_almanac_kind_arty_tier", n) or t("st_almanac_kind_arty")
     end
-    local n = shown_tier(a)
-    return n and f("st_almanac_kind_arty_tier", n) or t("st_almanac_kind_arty")
+    -- with Klondaik, its own level too, which its descriptions call "Level: Tier N"
+    local id = a.art_level and ART_LEVELS[a.art_level]
+    if id then
+        s = f("st_almanac_kind_level", s, t(id))
+    end
+    return s
+end
+
+-- a mutant part (GAMMA's kinds: parts, raw meats, belt hides), as against any other item a recipe
+-- takes (Klondaik's take drugs, kerosene, bandages)
+function is_mutant_part(sec)
+    local kind = ini_sys:r_string_ex(sec, "kind")
+    if kind then
+        return kind:find("^i_mutant") ~= nil
+    end
+    return sec:find("^mutant_part_") ~= nil
+end
+
+-- totals' parts as { mutant parts, other items }
+local function part_split(parts)
+    local m, o = 0, 0
+    for sec, n in pairs(parts) do
+        if is_mutant_part(sec) then
+            m = m + n
+        else
+            o = o + n
+        end
+    end
+    return m, o
 end
 
 local function detectors_block(C, a)
@@ -457,7 +498,9 @@ local function totals_block(C, a, eager)
     for _, n in pairs(tt.artifacts) do
         n_arts = n_arts + n
     end
-    local lines = { { f("st_almanac_totals", tt.crafts, n_arts, tt.part_count), "body" } }
+    local m, o = part_split(tt.parts)
+    local head = o > 0 and f("st_almanac_totals_items", tt.crafts, n_arts, m, o) or f("st_almanac_totals", tt.crafts, n_arts, m)
+    local lines = { { head, "body" } }
     for _, l in ipairs(count_lines(C, tt.artifacts, "body")) do
         lines[#lines + 1] = l
     end
@@ -634,7 +677,9 @@ function tree(sec, have)
     for _, n in pairs(tt.artifacts) do
         n_arts = n_arts + n
     end
-    out.sum = f("st_almanac_tree_sum", tt.crafts, layers, n_arts, tt.part_count)
+    local m, o = part_split(tt.parts)
+    out.sum = o > 0 and f("st_almanac_tree_sum_items", tt.crafts, layers, n_arts, m, o)
+        or f("st_almanac_tree_sum", tt.crafts, layers, n_arts, m)
     return out
 end
 

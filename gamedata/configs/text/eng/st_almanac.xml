@@ -318,4 +318,13 @@
 	<string id="st_almanac_tree_partial">
 		<text>you carry %s of %s</text>
 	</string>
+	<string id="st_almanac_kind_level">
+		<text>%s; Klondaik level %s</text>
+	</string>
+	<string id="st_almanac_totals_items">
+		<text>%s crafts, %s artifacts nothing makes, %s mutant parts, %s other items:</text>
+	</string>
+	<string id="st_almanac_tree_sum_items">
+		<text>%s crafts in %s layers. %s artifacts only the Zone makes, %s mutant parts, %s other items.</text>
+	</string>
 </string_table>

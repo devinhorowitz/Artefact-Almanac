@@ -312,4 +312,13 @@
 	<string id="st_almanac_tree_partial">
 		<text>у вас есть %s из %s</text>
 	</string>
+	<string id="st_almanac_kind_level">
+		<text>%s; уровень Клондайка: %s</text>
+	</string>
+	<string id="st_almanac_totals_items">
+		<text>Изготовлений: %s; исходных артефактов: %s; частей мутантов: %s; других предметов: %s.</text>
+	</string>
+	<string id="st_almanac_tree_sum_items">
+		<text>Изготовлений: %s, слоёв: %s. Артефактов, которые создаёт только Зона: %s; частей мутантов: %s; других предметов: %s.</text>
+	</string>
 </string_table>

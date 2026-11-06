@@ -30,8 +30,14 @@ MUTANTS = {
     "takes": ("if C.artifacts[rid] or takes then", "if C.artifacts[rid] then"),
     "registered": ("        if ini:section_exist(g) then\n", "        if true then\n"),
     "members": ("                if ini_sys:section_exist(m[1]) then\n", "                if true then\n"),
-    "layer_default": ('local names = csv(arts or (ini:section_exist(az) and ini:r_string_ex(az, "artefacts")))',
-                      "local names = csv(arts)"),
+    "layer_default": ('f.layers[i] = layer_of(C, csv(arts or (ini:section_exist(az) and ini:r_string_ex(az, "artefacts"))))',
+                      "f.layers[i] = layer_of(C, csv(arts))"),
+    "custom_read": ("        C.fields[#C.fields + 1] = { path = f.path, level = f.level, layers = { layer_of(C, f.names) } }\n", ""),
+    "custom_check": ('if type(field) == "table" and type(field.artefacts) == "table" and #field.artefacts > 0 then',
+                     "if type(field) == \"table\" then"),
+    "custom_module": ("local ok, cf = pcall(function() return bind_anomaly_zone.custom_fields end)",
+                      "local ok, cf = false, nil"),
+    "art_level": ('                art_level = SYS_GetParam(2, sec, "k_art_level"),\n', ""),
     "pick_share": ("picks[a] = (picks[a] or 0) + 1 / #names / #members", "picks[a] = (picks[a] or 0) + 1 / #members"),
     "dao_allowed": ("            if allowed[sec] then\n                n = n + 1\n",
                     "            if true then\n                n = n + 1\n"),
@@ -76,6 +82,62 @@ EXTRA = {
     "base/configs/text/eng/st_d.xml": '<string_table><string id="st_trader_x"><text>Trader X</text></string></string_table>',
     "traders.ltx": "[almanac_trade]\ntrade_x = st_trader_x\ntrade_nobody = -\n",
 }
+
+
+# a world of two artifacts in one registered group, one with Klondaik's level, no anomaly zone, and
+# Klondaik's optional spawner holding a field of its own (and one with no list, skipped)
+SMALL = r"""
+function printf() end
+ARTS = { af_x = { kind = "i_arty", inv_name = "X", tier = "3", k_art_level = "4" }, af_y = { kind = "i_arty", inv_name = "Y" } }
+function SYS_GetParam(typ, sec, key, def)
+    local v = ARTS[sec] and ARTS[sec][key]
+    if v == nil then return def end
+    if typ == 2 then return tonumber(v) end
+    return v
+end
+ini_sys = { section_for_each = function(_, fn) for s in pairs(ARTS) do fn(s) end end,
+            line_exist = function() return false end, section_exist = function(_, s) return ARTS[s] ~= nil end }
+GROUPS = { artefact_groups = { { "grp", "" } }, grp = { { "af_x", "" }, { "af_y", "" } } }
+function ini_file(path)
+    if path ~= "items\\settings\\artefacts.ltx" then error("no file " .. path) end
+    return { section_exist = function(_, s) return GROUPS[s] ~= nil end,
+             line_count = function(_, s) return #GROUPS[s] end,
+             r_line_ex = function(_, s, i) local kv = GROUPS[s][i + 1] return true, kv[1], kv[2] end }
+end
+alife = function() return { object = function() return nil end } end
+game_graph = function() return {} end
+game = { translate_string = function(s) return s end }
+bind_anomaly_zone = { custom_fields = { l03u_agr_underground = {
+    { name = "agru_electro", artefacts = { "grp", "not_a_group" } }, { name = "no_list" } } } }
+"""
+
+
+def custom_checks(script):
+    """the BETA spawner's fields and Klondaik's level, in the catalog the game builds"""
+    from lua_jit import L
+    fails = []
+    lua = L.LuaRuntime(unpack_returned_tuples=True)
+    lua.execute(SMALL)
+    run = lua.eval("function(src) local e = setmetatable({}, { __index = _G }) "
+                   "local f = assert(loadstring(src, 'almanac_data')) setfenv(f, e) f() return e end")
+    D = run(open(script, encoding="utf-8").read())
+    C = D.build()
+    failed = [C.failed[i] for i in range(1, len(C.failed) + 1)]
+    fields = [(C.fields[i].path, C.fields[i].level) for i in range(1, len(C.fields) + 1)]
+    if [x for x in failed if x in ("items", "groups", "fields")] or fields != [("custom:agru_electro", "l03u_agr_underground")]:
+        fails.append("custom fields: failed %r, fields %r" % (failed, fields))
+    x = C.artifacts.af_x
+    shares = [list(C.artifacts[s].fields["l03u_agr_underground"].values()) if C.artifacts[s].fields["l03u_agr_underground"] else None
+              for s in ("af_x", "af_y")]
+    if shares != [[0.25], [0.25]]:
+        fails.append("custom field shares: %r" % shares)
+    if (x.art_level, C.artifacts.af_y.art_level) != (4, None):
+        fails.append("Klondaik's level: %r" % ((x.art_level, C.artifacts.af_y.art_level),))
+    lua.execute("bind_anomaly_zone = nil")
+    C = run(open(script, encoding="utf-8").read()).build()
+    if len(C.fields) != 0:
+        fails.append("fields without the spawner: %d" % len(C.fields))
+    return fails
 
 
 def main():
@@ -129,6 +191,10 @@ def main():
         got = (out["wanted"], out["wanted_tasks"], out["wanted_factions"], out["wanted_givers"])
         if got != (["af_a"], 3, ["ecolog", "stalker"], ["yan_x"]):
             fails.append("wanted: %r" % (got,))
+        try:
+            fails += custom_checks(script)
+        except Exception as e:
+            fails.append("the custom field run crashed: %s" % str(e).splitlines()[0])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     for f in fails:

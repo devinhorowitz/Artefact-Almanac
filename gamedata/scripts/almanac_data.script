@@ -80,6 +80,8 @@ local function read_items(C)
                 sec = sec, kind = kind,
                 name = game.translate_string(SYS_GetParam(0, sec, "inv_name", sec)),
                 tier = SYS_GetParam(2, sec, "tier"), rank = SYS_GetParam(2, sec, "af_rank"),
+                -- Klondaik's own scale beside the tier, where Klondaik is installed
+                art_level = SYS_GetParam(2, sec, "k_art_level"),
                 cost = SYS_GetParam(2, sec, "cost"), weight = SYS_GetParam(2, sec, "inv_weight"),
                 containers = {}, detectors = {}, fields = {}, dao = {}, dao_random = false,
                 made_by = {}, used_in = {},
@@ -266,6 +268,23 @@ end
 -- one field config: for each layer, the chance that one pick names each artifact (a pick takes one
 -- of the layer's groups at random, then one of the group's artifacts; a group that isn't
 -- registered spawns nothing)
+-- a field's pick from its list of groups: one of them, then one artifact of it, each as likely; a
+-- name that is no registered group picks nothing
+local function layer_of(C, names)
+    local picks, nothing = {}, 0
+    for _, g in ipairs(names) do
+        local members = C.groups[g]
+        if members and #members > 0 then
+            for _, a in ipairs(members) do
+                picks[a] = (picks[a] or 0) + 1 / #names / #members
+            end
+        else
+            nothing = nothing + 1 / #names
+        end
+    end
+    return { groups = names, picks = picks, nothing = nothing }
+end
+
 local function read_field(C, f)
     local ini = ini_file(f.path)
     local az = "anomal_zone"
@@ -274,26 +293,38 @@ local function read_field(C, f)
     for i = 1, n do
         local layer = "layer_" .. i
         local arts = ini:section_exist(layer) and ini:r_string_ex(layer, "artefacts")
-        local names = csv(arts or (ini:section_exist(az) and ini:r_string_ex(az, "artefacts")))
-        local picks, nothing = {}, 0
-        for _, g in ipairs(names) do
-            local members = C.groups[g]
-            if members and #members > 0 then
-                for _, a in ipairs(members) do
-                    picks[a] = (picks[a] or 0) + 1 / #names / #members
-                end
-            else
-                nothing = nothing + 1 / #names
-            end
-        end
-        f.layers[i] = { groups = names, picks = picks, nothing = nothing }
+        f.layers[i] = layer_of(C, csv(arts or (ini:section_exist(az) and ini:r_string_ex(az, "artefacts"))))
     end
     return f
+end
+
+-- fields a spawner keeps in a table of its own rather than in an anomaly zone: Klondaik's optional
+-- "Artefact spawn modded" fills bind_anomaly_zone.custom_fields, level -> { { name, artefacts =
+-- groups }, ... }, and picks from them as the zones' fields pick. One entry per field, as
+-- "custom:<name>"
+function custom_fields()
+    local ok, cf = pcall(function() return bind_anomaly_zone.custom_fields end)
+    local out = {}
+    if not (ok and type(cf) == "table") then
+        return out
+    end
+    for lvl, list in pairs(cf) do
+        for _, field in ipairs(type(list) == "table" and list or {}) do
+            if type(field) == "table" and type(field.artefacts) == "table" and #field.artefacts > 0 then
+                out[#out + 1] = { path = "custom:" .. tostring(field.name), level = lvl, names = field.artefacts }
+            end
+        end
+    end
+    table.sort(out, function(a, b) return a.path < b.path or (a.path == b.path and a.level < b.level) end)
+    return out
 end
 
 local function read_fields(C)
     for _, f in ipairs(field_files()) do
         C.fields[#C.fields + 1] = read_field(C, f)
+    end
+    for _, f in ipairs(custom_fields()) do
+        C.fields[#C.fields + 1] = { path = f.path, level = f.level, layers = { layer_of(C, f.names) } }
     end
     for _, f in ipairs(C.fields) do
         local where = f.level or f.folder
