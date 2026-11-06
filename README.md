@@ -14,7 +14,8 @@ sibling to [Seasons of the Zone](https://github.com/devinhorowitz/seasonsofthezo
 
 ## Status
 
-1.0.0 is the first release: the almanac and the crafting trees. The survey comes next, in 1.1.
+1.0.1 is the latest release: the almanac and the crafting trees, now with each tree drawn layer by
+layer, and Klondaik's levels and spawns read. The survey comes next, in 1.1.
 The plan is in [docs/DESIGN.md](docs/DESIGN.md).
 
 ## How it plays
@@ -32,6 +33,8 @@ entry. In English and Russian.
 top, each craft's artifacts on the row below, down to the ones only the Zone makes. Each artifact
 shows the mutant parts its own craft takes against what you carry, and each row the book its crafts
 need and whether you've read it. An artifact you already carry cuts its branch.
+
+![The Compass's crafting tree, layer by layer](media/crafting-tree.jpg)
 
 ![The Compass's tree: what's still missing with what you carry](media/compass-tree.jpg)
 
@@ -71,6 +74,10 @@ Or, with Claude Code open in your GAMMA folder, paste:
 
 **Removing it** is safe at any time. Your finds are kept in your save under the Almanac's own key;
 without the mod, that key goes unread and the save loads as before.
+
+**Other artifact mods** show up on their own, since the Almanac reads the game's configs as they
+are. With Klondaik, each artifact also shows Klondaik's own level beside the tier, and its optional
+"Artefact spawn modded" fields count in where the Zone makes it.
 
 ## For modders
 
