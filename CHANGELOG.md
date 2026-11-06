@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.1 — 2026-11-06
 
 - **The crafting tree:** an artifact's recipe links to its whole tree, layer by layer, in the page's
   place: the artifact at the top, each craft's artifacts on the row below, wired to it, down to the

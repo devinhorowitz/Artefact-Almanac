@@ -26,7 +26,7 @@ from lua_jit import L  # noqa: E402
 ROOT = os.path.dirname(HERE)
 GD = os.path.join(ROOT, "gamedata")
 NAME = "Artefact Almanac"
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 TESTS = ["test_census.py", "test_ingame_census.py", "test_catalog.py", "test_trees.py", "test_page.py", "test_found.py", "test_learn.py"]
 GAMMA = os.environ.get("ALMANAC_GAMMA", r"D:\GAMMA")
 LOCK = os.environ.get("ALMANAC_LOCK", os.path.join(GAMMA, "_baseline", "state", "game-lock.txt"))
