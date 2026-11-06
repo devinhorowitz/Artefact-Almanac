@@ -307,6 +307,12 @@ expiry. Nothing on the HUD.
   item configs, Artefacts Reinvention's `craft.ltx` and `artefacts.ltx` and its Dynamic Anomalies
   lists. Rerun the census after a dev2 sync touches them.
 - **Dynamic Anomalies here is Jack Harris's Anti Lag copy** with local fixes.
+- **Klondaik** (1.4e read 2026-11-05, not installed here) replaces `artefacts.ltx` with 25 groups
+  of its own, points the fields at them by DLTX, replaces the Melter's `craft.ltx` section `[7]`
+  and keeps Dynamic Anomalies' tables: all of it read as it is. Its artifacts carry a second scale,
+  `k_art_level`, shown beside the tier; its recipes take items that are no mutant parts, counted
+  apart; its optional "Artefact spawn modded" keeps fields in `bind_anomaly_zone.custom_fields`,
+  read as more fields. Not read: its optional mutant-death spawns ("Anomalous Creation").
 - **The workshop's `UIWorkshopCraft:UpdateItem` and `:Craft` are stubs other mods fill in**
   (Serious Workshop optimization's `ui_workshop.script`), so a hand-off to the workshop must wrap,
   never replace.

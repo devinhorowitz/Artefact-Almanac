@@ -9,6 +9,13 @@
   whether it's read. An artifact you carry cuts its branch, which dims. Back, or Escape flat,
   returns to the entry.
 - A link is followed at the next frame rather than inside its own click.
+- **Klondaik** (checked against 1.4e): an artifact's line names Klondaik's own level beside the
+  tier ("Artifact, tier 2; Klondaik level 4"), the level its descriptions call "Level: Tier 4", by
+  Klondaik's own names (Absolute, Modifier and the rest). Its optional "Artefact spawn modded"
+  fields (Agroprom underground, X8, Dead City, the Chernobyl NPP and others) count in "Where the
+  Zone makes it".
+- Totals and the tree's summary count mutant parts apart from the other items a recipe takes
+  (Klondaik's take drugs, kerosene and bandages).
 
 ## 1.0.0 — 2026-11-01
 

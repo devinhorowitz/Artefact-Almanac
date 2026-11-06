@@ -51,7 +51,7 @@ MUTANTS = {
     "group_hidden": ('        if total > 0 or g.id == "all" then\n', "        if true then\n"),
     "shown_tier": ("        return a.tier - 1\n", "        return a.tier\n"),
     "shown_from_two": ("a.tier and a.tier >= 2 then\n        return a.tier - 1", "a.tier and a.tier >= 1 then\n        return a.tier - 1"),
-    "junk_kind": ('    if a.kind == "i_arty_junk" then\n        return t("st_almanac_kind_junk")\n    end\n', ""),
+    "junk_kind": ('    if a.kind == "i_arty_junk" then\n        s = t("st_almanac_kind_junk")\n', '    if false then\n        s = t("st_almanac_kind_junk")\n'),
     "made_part_link": ('art and "body" or "dim", art }', 'art and "body" or "dim", nil }'),
     "into_link": ('u.depth == 1 and "body" or "dim",\n                              u.sec }', 'u.depth == 1 and "body" or "dim",\n                              nil }'),
     "count_link": ('{ f("st_almanac_part", x.name, x.n), role, x.sec }', '{ f("st_almanac_part", x.name, x.n), role }'),
@@ -79,6 +79,12 @@ MUTANTS = {
     "tree_find_more": ("local s = n.got > 0 and f(\"st_almanac_tree_find_more\", rest)", "local s = false"),
     "tree_supply": ("    local supply = supply_for(have)\n    local C", "    local supply = carry(have)\n    local C"),
     "held_role": ('got >= n and "good" or (got == 0 and "warn" or "heading")', 'got >= n and "good" or "warn"'),
+    "kind_level": ('        s = f("st_almanac_kind_level", s, t(id))\n', ""),
+    "mutant_kind": ('        return kind:find("^i_mutant") ~= nil\n', "        return true\n"),
+    "mutant_prefix": ('    return sec:find("^mutant_part_") ~= nil\n', "    return false\n"),
+    "totals_items": ('local head = o > 0 and f("st_almanac_totals_items", tt.crafts, n_arts, m, o) or',
+                     'local head = false and f("st_almanac_totals_items", tt.crafts, n_arts, m, o) or'),
+    "tree_sum_items": ('out.sum = o > 0 and f("st_almanac_tree_sum_items"', 'out.sum = false and f("st_almanac_tree_sum_items"'),
 }
 
 WORLD = r"""
@@ -193,6 +199,12 @@ STR.st_almanac_tree_find_n = "find %s"
 STR.st_almanac_tree_find_more = "find %s more"
 STR.st_almanac_tree_partial = "carried %s of %s"
 INI.book3 = { inv_name = "The Art of Fusion Vol. 3" }
+INI.part_p.kind = "i_mutant_part"
+INI.kero = { inv_name = "Kero", kind = "i_misc" }
+STR.st_almanac_kind_level = "%s, level %s"
+STR.st_art_level_4 = "Four"
+STR.st_almanac_totals_items = "%s crafts, %s bottom, %s parts, %s items"
+STR.st_almanac_tree_sum_items = "%s crafts, %s layers, %s bottom, %s parts, %s items"
 """
 
 
@@ -383,6 +395,23 @@ def main():
         P.set_have(lua.table_from({}), lua.table_from({"part_p": 10}), 10)
         eq("tree with the stashes", tree("c", None)[4]["b"][0][3], [("Paw", "10/10", "good")])
         P.set_have(None, None, None)
+
+        # with Klondaik: its own level beside the tier, by its own strings; one it doesn't name, none
+        arts.k.art_level = 4
+        eq("Klondaik's level", P.kind_line(arts.k), "Artifact 3, level Four")
+        arts.k.art_level = 99
+        eq("a level with no name", P.kind_line(arts.k), "Artifact 3")
+        arts.k.art_level = None
+        # a recipe taking an item that is no mutant part: counted apart, in the totals and the tree
+        eq("mutant parts", [P.is_mutant_part(s) for s in ("part_p", "kero", "mutant_part_x")], [True, False, True])
+        eq("totals, parts only", dict(entry("k", lua.table_from({"k": 1}))["blocks"])["st_almanac_h_totals"][0][0],
+           "2 crafts, 1 bottom, 5 parts")
+        r_k = [r for r in lst(g.CAT.recipes) if r.key == "r_k"][0]
+        r_k.parts[2] = lua.table_from(["kero", 3])
+        eq("totals with other items", dict(entry("k", lua.table_from({"k": 1}))["blocks"])["st_almanac_h_totals"][0][0],
+           "2 crafts, 1 bottom, 5 parts, 3 items")
+        eq("tree sum with other items", tree("k", none)[1], "2 crafts, 2 layers, 1 bottom, 5 parts, 3 items")
+        r_k.parts[2] = None
     except Exception as ex:
         fails.append("the run crashed: %s" % str(ex).splitlines()[0])
     for f in fails:
