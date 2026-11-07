@@ -68,6 +68,10 @@ MUTANTS = {
                    '    if false then\n        lines[#lines + 1] = { f("st_almanac_need_stashes", range), "dim" }'),
     "supply_caller": ("    if have == nil and _supply then\n", "    if _supply then\n"),
     "caption_counts": ('g.name, g.known, g.total, g.found)', 'g.name, g.total, g.known, g.found)'),
+    "leads_none": ('        return w ~= nil and w.kind ~= "none"\n', '        return w ~= nil\n'),
+    "lead_row": ('name = w and w.lvl and f("st_almanac_lead_row", a.name, t(w.lvl)) or a.name', 'name = a.name'),
+    "leads_caption": ('        return f("st_almanac_leads_caption", g.name, g.total)\n', ''),
+    "survey_block": ("    put(ok and sb or nil)\n", ""),
     "tree_link": ('{ t("st_almanac_tree_open"), "body", a.sec, "tree" }', '{ t("st_almanac_tree_open"), "body", a.sec }'),
     "tree_book_short": ('return n:match("(%S+%s+%S*%d%S*)%s*$") or n', "return n"),
     "tree_unread": ("unread = unread or not almanac_trees.book_known(b)", "unread = false"),
@@ -412,6 +416,24 @@ def main():
            "2 crafts, 1 bottom, 5 parts, 3 items")
         eq("tree sum with other items", tree("k", none)[1], "2 crafts, 2 layers, 1 bottom, 5 parts, 3 items")
         r_k.parts[2] = None
+        # the survey's leads: a tab of their own while there's word on any (not "nothing"), each row
+        # naming its level; the entry's survey block after "where"; a block that fails is left out
+        lua.execute('STR.st_almanac_lead_row = "%s: %s" STR.st_almanac_leads_caption = "%s: %s" '
+                    'LEADS = { b = { kind = "could", lvl = "lvl3" }, c = { kind = "none" } } '
+                    'almanac_survey = { lead = function(sec) return LEADS[sec] end, '
+                    'block = function(sec) if sec == "c" then error("boom") end '
+                    'return { heading = "SURVEY", lines = { { "ask", "body", sec, "survey" } } } end } '
+                    'LOGGED = {} printf = function(fmt, x) LOGGED[#LOGGED + 1] = fmt end')
+        eq("leads tab", groups(carry_b)[-1], ("leads", 1, 1))
+        eq("lead rows", [(x.sec, x.name, x.known) for x in lst(P.rows("leads", carry_b))], [("b", "Bee: lvl3", True)])
+        eq("leads caption", P.caption(lst(P.groups(carry_b))[-1]), "st_almanac_group_leads: 1")
+        heads = [b[0] for b in entry("b", carry_b)["blocks"]]
+        eq("survey block after where", heads[heads.index("st_almanac_h_where") + 1], "SURVEY")
+        eq("a failing block left out", "SURVEY" in [b[0] for b in entry("c", lua.table_from({"c": 1}))["blocks"]], False)
+        eq("and logged", list(g.LOGGED.values()), ["! [almanac-page] the survey: %s"])
+        lua.execute("LEADS = {}")
+        eq("no leads, no tab", [x[0] for x in groups(carry_b)].count("leads"), 0)
+        g.almanac_survey = None
     except Exception as ex:
         fails.append("the run crashed: %s" % str(ex).splitlines()[0])
     for f in fails:

@@ -253,6 +253,39 @@ the census's, offline and in game, where all 102 trees take under a millisecond.
 
 ## 1.1: the survey
 
+**As built** (`almanac_survey.script`, the user's choices of 2026-11-07: the player asks on the
+entry, and "Patient" tuning):
+- An artifact's entry has a Survey block after "Where the Zone makes it": the word on it, when that
+  lapses, the question waiting, a link "Ask the Ecologists where one could be" or why the player
+  can't ask (the Zone makes none in fields or anomalies; standing too low; no detector in the slot,
+  or one that doesn't list it; another question waiting; the day's questions spent), and the
+  standing with both steps. Following the link keeps the entry where it was scrolled.
+- One question a game day (MCM 1-5), one waiting at a time. Word comes 60-180 game minutes later
+  (MCM), held while an emission or psi storm is on, and is read from the world when it's sent, not
+  when asked. The standing's step is the one held when asking.
+- **Where it looks.** Every level but the player's own that the Zone rolls again on arrival:
+  Artefacts Reinvention's fields where `m_data.artefact_respawn_levels` marks the level, Dynamic
+  Anomalies where its `last_surge_time` is past the level's last update (it takes part in half the
+  emissions). Each level gets an expected count: a field picks once at the eco `arty_chance`, a
+  layer at random (nearly every field config here tries once); Dynamic Anomalies rolls each smart
+  with anomalies (smarts on the level times its zone chance) up to its maximum, at its chance
+  (doubled underground), from its list or now and then its random pick, all from its MCM.
+- **Naming a level.** At the first step a level is named in proportion to its expected count raised
+  to 1 + 3s, s going from 0 at the first step to 1 at the second: a poor level is often named at
+  first, seldom later. At the second step, "there is one" when one lies free now, else the likeliest
+  level with its odds in a word (slim under 15%, fair under 40%, good). With nowhere to look:
+  nothing on the instruments.
+- **"There is one"** sweeps the alife for the artifact lying free, leaving out a display case's copy
+  (Hideout Furniture), one Dynamic Anomalies clears on arrival (its own, on a level due its update),
+  and one the despawner will have released within a day; an Artefact Hunter's it never releases.
+  The level holding the most is named.
+- **Lapses** at `emission_end` or `psi_storm_end`, every lead at once. With Seasons, the entry says
+  when: its exact tier's hours to the nearer storm, or its coarse bracket.
+- **The message** comes in the leader's voice and portrait (`ui_inGame2_sakharov`, `_lebedev`,
+  `_Hernandez`), quiet with MCM's Messages off. A Leads tab (a mast's mark) lists the artifacts with
+  word, each with its level, while there's any.
+- Saved in `m_data.almanac.survey` beside the finds, plain values.
+
 **What it can say, and nothing else.** The survey never spawns, moves or reserves anything.
 - *"There is one":* an unowned artifact of that kind lies on a level now. An id sweep like the
   despawner's finds them, on demand or once a game hour. Fields and Dynamic Anomalies spawn only
@@ -343,7 +376,9 @@ expiry. Nothing on the HUD.
 
 ## Still open
 
-- How the survey's delay, its odds of a miss by standing, and its daily limit are tuned (1.1).
+- Whether the survey's defaults (one question a game day, word in 1-3 game hours, a level named in
+  proportion to its odds to the power 1 + 3s) feel right in play; all but the last are MCM options.
+- Immersive Identification's finds as a survey lead, through its public calls only (not in 1.1).
 - How many artifacts a real play session leaves per level, and how often a field or Dynamic
   Anomalies actually yields one after an emission: the in-game census, left on through play, would
   answer both.

@@ -327,4 +327,187 @@
 	<string id="st_almanac_tree_sum_items">
 		<text>%s crafts in %s layers. %s artifacts only the Zone makes, %s mutant parts, %s other items.</text>
 	</string>
+	<string id="st_almanac_group_leads">
+		<text>Leads</text>
+	</string>
+	<string id="st_almanac_leads_caption">
+		<text>%s: %s, good until the next emission or psi storm</text>
+	</string>
+	<string id="st_almanac_lead_row">
+		<text>%s: %s</text>
+	</string>
+	<string id="st_almanac_h_survey">
+		<text>Survey</text>
+	</string>
+	<string id="st_almanac_survey_is">
+		<text>There is one lying in %s now (word from %s at %s).</text>
+	</string>
+	<string id="st_almanac_survey_could">
+		<text>One could turn up in %s when you get there%s (word from %s at %s).</text>
+	</string>
+	<string id="st_almanac_survey_odds">
+		<text>; the odds are %s</text>
+	</string>
+	<string id="st_almanac_survey_odds_slim">
+		<text>slim</text>
+	</string>
+	<string id="st_almanac_survey_odds_fair">
+		<text>fair</text>
+	</string>
+	<string id="st_almanac_survey_odds_good">
+		<text>good</text>
+	</string>
+	<string id="st_almanac_survey_none">
+		<text>Nothing on the network's instruments (word from %s at %s).</text>
+	</string>
+	<string id="st_almanac_survey_until">
+		<text>Good until the next emission or psi storm.</text>
+	</string>
+	<string id="st_almanac_survey_until_when">
+		<text>Good until the next emission or psi storm: %s.</text>
+	</string>
+	<string id="st_almanac_survey_lapse_hour">
+		<text>within the hour</text>
+	</string>
+	<string id="st_almanac_survey_lapse_hours">
+		<text>in about %s hours</text>
+	</string>
+	<string id="st_almanac_survey_lapse_band_2">
+		<text>within 2 hours</text>
+	</string>
+	<string id="st_almanac_survey_lapse_band_8">
+		<text>in 2 to 8 hours</text>
+	</string>
+	<string id="st_almanac_survey_lapse_band_16">
+		<text>in 8 to 16 hours</text>
+	</string>
+	<string id="st_almanac_survey_lapse_band_clear">
+		<text>not for 16 hours or more</text>
+	</string>
+	<string id="st_almanac_survey_ask_ecolog">
+		<text>Ask the Ecologists where one could be</text>
+	</string>
+	<string id="st_almanac_survey_ask_csky">
+		<text>Ask Clear Sky where one could be</text>
+	</string>
+	<string id="st_almanac_survey_ask_isg">
+		<text>Ask the ISG where one could be</text>
+	</string>
+	<string id="st_almanac_survey_asked_ecolog">
+		<text>Asked the Ecologists at %s. Word comes within a few hours.</text>
+	</string>
+	<string id="st_almanac_survey_asked_csky">
+		<text>Asked Clear Sky at %s. Word comes within a few hours.</text>
+	</string>
+	<string id="st_almanac_survey_asked_isg">
+		<text>Asked the ISG at %s. Word comes within a few hours.</text>
+	</string>
+	<string id="st_almanac_survey_locked_ecolog">
+		<text>The Ecologists share their survey from standing %s; yours is %s.</text>
+	</string>
+	<string id="st_almanac_survey_locked_csky">
+		<text>Clear Sky shares its survey from standing %s; yours is %s.</text>
+	</string>
+	<string id="st_almanac_survey_locked_isg">
+		<text>The ISG shares its survey from standing %s; yours is %s.</text>
+	</string>
+	<string id="st_almanac_survey_standing_ecolog">
+		<text>Standing with the Ecologists: %s (word that one could turn up: %s; that one is there: %s).</text>
+	</string>
+	<string id="st_almanac_survey_standing_csky">
+		<text>Standing with Clear Sky: %s (word that one could turn up: %s; that one is there: %s).</text>
+	</string>
+	<string id="st_almanac_survey_standing_isg">
+		<text>Standing with the ISG: %s (word that one could turn up: %s; that one is there: %s).</text>
+	</string>
+	<string id="st_almanac_survey_not_listed">
+		<text>The %s in your slot doesn't sense it, so the network can't look for it.</text>
+	</string>
+	<string id="st_almanac_survey_no_detector">
+		<text>Put a detector in its slot: the network reports only what your detector senses.</text>
+	</string>
+	<string id="st_almanac_survey_nowhere">
+		<text>The Zone makes none in fields or anomalies: nothing for the network to look for.</text>
+	</string>
+	<string id="st_almanac_survey_busy">
+		<text>Waiting for word on %s first.</text>
+	</string>
+	<string id="st_almanac_survey_spent">
+		<text>No more questions today. Ask again tomorrow.</text>
+	</string>
+	<string id="st_almanac_leader_ecolog">
+		<text>Professor Sakharov</text>
+	</string>
+	<string id="st_almanac_leader_csky">
+		<text>Lebedev</text>
+	</string>
+	<string id="st_almanac_leader_isg">
+		<text>Major Hernandez</text>
+	</string>
+	<string id="st_almanac_survey_msg_is">
+		<text>%s: our instruments show one lying free in %s right now. Others may get there first. Good until the next emission or psi storm.</text>
+	</string>
+	<string id="st_almanac_survey_msg_could">
+		<text>%s: one could turn up in %s when you get there. No promises: the Zone decides. Good until the next emission or psi storm.</text>
+	</string>
+	<string id="st_almanac_survey_msg_odds">
+		<text>%s: one could turn up in %s when you get there, and we'd call the odds %s. Good until the next emission or psi storm.</text>
+	</string>
+	<string id="st_almanac_survey_msg_none">
+		<text>%s: nothing on our instruments for now. Ask again after the next emission.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey">
+		<text>Survey</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_desc">
+		<text>Ask a scientific network, from an artifact's entry, where one could be. Word comes later as a PDA message: a level, never a spot, good until the next emission or psi storm.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_network">
+		<text>Survey: whose network</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_network_desc">
+		<text>Whose standing buys the survey. With Seasons of the Zone, its forecast's network is used instead, so one standing buys both. The best of the three goes by whoever thinks most of you.</text>
+	</string>
+	<string id="almanac_survey_network_lst_ecolog">
+		<text>Ecologists</text>
+	</string>
+	<string id="almanac_survey_network_lst_csky">
+		<text>Clear Sky</text>
+	</string>
+	<string id="almanac_survey_network_lst_isg">
+		<text>ISG</text>
+	</string>
+	<string id="almanac_survey_network_lst_best">
+		<text>The best of the three</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_could">
+		<text>Survey: standing for word that one could turn up</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_could_desc">
+		<text>From this standing the network names a level its next roll could make one on. The nearer the next step, the likelier the level it names.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_is">
+		<text>Survey: standing for word that one is there</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_is_desc">
+		<text>From this standing the network also says where one lies free now, or else names the likeliest level and its odds.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_per_day">
+		<text>Survey: questions a day</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_per_day_desc">
+		<text>How many questions the network answers each game day.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_wait_min">
+		<text>Survey: shortest wait for word (game minutes)</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_wait_min_desc">
+		<text>The game clock runs six times real time: 60 game minutes are 10 real ones.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_wait_max">
+		<text>Survey: longest wait for word (game minutes)</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_wait_max_desc">
+		<text>Word comes at a random time between the shortest and the longest wait, and waits for an emission or psi storm to pass.</text>
+	</string>
 </string_table>

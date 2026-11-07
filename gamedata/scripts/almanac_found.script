@@ -9,7 +9,8 @@ A find keeps when, where and how; the place is put into words only when shown, b
 news helper ("in Cordon, near the rookie village"), so it follows the language. A new find is a PDA
 message unless MCM's "Messages" is off.
 
-Saved with the game under its own key, m_data.almanac, plain values only, with a schema version.
+Saved with the game under its own key, m_data.almanac, plain values only, with a schema version,
+the survey's questions and leads beside the finds.
 The engine sends no actor_on_item_take for what the player already carries when a save loads, so the
 inventory is scanned on the first update instead, quietly. Removing the mod leaves the key unread in
 the save, nothing else.
@@ -307,14 +308,20 @@ local function read_all(t)
     return out
 end
 
+-- the survey's questions and leads (almanac_survey) go in the same key
 local function save_state(m_data)
-    m_data.almanac = { v = SCHEMA, found = plain_all(found), learned = plain_all(learned) }
+    local ok, survey = pcall(function() return almanac_survey and almanac_survey.state() end)
+    m_data.almanac = { v = SCHEMA, found = plain_all(found), learned = plain_all(learned),
+                       survey = ok and survey or nil }
 end
 
 local function load_state(m_data)
     local d = m_data.almanac
     found = read_all(type(d) == "table" and d.found)
     learned = read_all(type(d) == "table" and d.learned)
+    if almanac_survey then
+        pcall(almanac_survey.restore, type(d) == "table" and d.survey or nil)
+    end
     scanned = false
 end
 

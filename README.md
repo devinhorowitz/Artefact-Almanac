@@ -1,9 +1,9 @@
 # Artefact Almanac
 
 **A PDA guide to the Zone's artifacts.** Every artifact in your game with its stat card, tier,
-the detectors that see it and where the Zone makes it, and a crafting tree that says how much a
-higher tier takes. Later, word from a scientific network, earned with your standing, that an
-artifact you want could be in a region.
+the detectors that see it and where the Zone makes it, a crafting tree that says how much a higher
+tier takes, and a survey: word from a scientific network, earned with your standing, that an
+artifact you want could be in a level.
 
 A mod for the S.T.A.L.K.E.R. Anomaly modpack G.A.M.M.A. (Anomaly 1.5.3 with Modded Exes), a
 sibling to [Seasons of the Zone](https://github.com/devinhorowitz/seasonsofthezone),
@@ -14,9 +14,8 @@ sibling to [Seasons of the Zone](https://github.com/devinhorowitz/seasonsofthezo
 
 ## Status
 
-1.0.1 is the latest release: the almanac and the crafting trees, now with each tree drawn layer by
-layer, and Klondaik's levels and spawns read. The survey comes next, in 1.1.
-The plan is in [docs/DESIGN.md](docs/DESIGN.md).
+1.1.0 is the latest release: the almanac, the crafting trees, and the survey. The plan is in
+[docs/DESIGN.md](docs/DESIGN.md).
 
 ## How it plays
 
@@ -38,6 +37,15 @@ need and whether you've read it. An artifact you already carry cuts its branch.
 
 ![The Compass's tree: what's still missing with what you carry](media/compass-tree.jpg)
 
+**The survey.** On an artifact's entry, ask a scientific network where one could be: the Ecologists,
+Clear Sky or the ISG (with Seasons of the Zone, its forecast's network, so one standing buys both).
+Word comes a few game hours later as a PDA message from Sakharov, Lebedev or Major Hernandez. It
+names a level, never a spot, and is good until the next emission or psi storm. From 200 standing
+it says where one could turn up when you get there, often a poor guess at first; from 700 it can say
+where one lies free right now, or names the likeliest level and its odds. The network looks only
+for what the detector in your slot senses, and answers one question a game day. Leads get a tab of
+their own while they last.
+
 **Open it your way:** its own PDA tab, Mod App Creator's tile (if you have MAC; MCM swaps it for the
 tab), or a key (MCM) that opens it flat and sharp.
 
@@ -58,7 +66,8 @@ opens them all.
 
 ![What the Ecologist told you, and the artifacts you don't know yet](media/heard-of-one.jpg)
 
-It leaves the game's economy alone: no spawns, prices, loot or stats change.
+It leaves the game's economy alone: no spawns, prices, loot or stats change. The survey only reads
+the world as it is; it never spawns, moves or saves an artifact for you.
 
 ## Install
 
@@ -103,6 +112,12 @@ down to the artifacts nothing makes and the mutant parts, what it goes into, how
 all (the Compass: 11 crafts, 4 junk artifacts, 35 mutant parts), and how much is still missing once
 what you carry is used.
 
+**The survey** (`gamedata/scripts/almanac_survey.script`): the gate (the network and its standing,
+the detector in the slot), the levels the Zone rolls again on arrival with how many of an artifact
+each roll is expected to make (Artefacts Reinvention's fields, Dynamic Anomalies' lists), and a
+sweep for one lying free that no despawner or arrival clears first. It reads only; its questions
+and leads are saved beside the finds.
+
 `python -I tools/build.py` checks the mod and installs it as the MO2 mod "Artefact Almanac"
 (`--mods <folder>` for another MO2 instance). `python -I tools/release.py` packages a release zip
 in `build/`. `python -I tools/catalog_lua.py` runs the catalog over an install's configs and
@@ -133,6 +148,7 @@ python -I tools/test_trees.py
 python -I tools/test_page.py
 python -I tools/test_found.py
 python -I tools/test_learn.py
+python -I tools/test_survey.py
 python -I tools/mutants.py
 ```
 

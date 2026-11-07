@@ -30,7 +30,7 @@ local TAB_LIGHT = { off = 14, over = 34 }   -- a tab panel's white, by alpha: as
 -- each group's mark (almanac_marks.dds, drawn by tools/make_art.py): tier N has N chevrons
 local MARKS = {
     all = "almanac_mark_all", junk = "almanac_mark_junk", t1 = "almanac_mark_t1", t2 = "almanac_mark_t2",
-    t3 = "almanac_mark_t3", t4 = "almanac_mark_t4", other = "almanac_mark_other",
+    t3 = "almanac_mark_t3", t4 = "almanac_mark_t4", other = "almanac_mark_other", leads = "almanac_mark_leads",
 }
 local ROLES = {
     heading = { 238, 196, 112 }, body = { 200, 200, 200 }, dim = { 140, 140, 140 },
@@ -206,7 +206,8 @@ function AlmanacPage:FillTabs()
             slot.mark:SetTextureColor(argb(role))
             local mh = slot.mark:GetHeight()
             local mw = mh * wide
-            slot.count:SetText(string.format("%d/%d", g.known, g.total))
+            -- the leads' tab counts them; the others, known of listed
+            slot.count:SetText(g.id == "leads" and tostring(g.total) or string.format("%d/%d", g.known, g.total))
             slot.count:SetTextColor(argb(role))
             slot.count:AdjustWidthToText()
             local left = (w - (mw + MARK_GAP + slot.count:GetWidth())) / 2
@@ -270,6 +271,10 @@ function AlmanacPage:Update()
         self.link_next = nil
         self:FollowLink(k)
     end
+    if self.detail_scroll then
+        self.detail:SetScrollPos(self.detail_scroll)
+        self.detail_scroll = nil
+    end
     self:LightTabs()
     self:LightLinks()
 end
@@ -299,13 +304,27 @@ function AlmanacPage:OnLink(k)
     self.link_next = k
 end
 
--- an artifact's entry, or its tree for the recipe's tree link
+-- an artifact's entry, or its tree for the recipe's tree link, or (the survey's link) the question
+-- asked and the entry shown again with it
 function AlmanacPage:FollowLink(k)
     local l = self.links[k]
     if not l then
         return
     end
-    if l.tree then
+    if l.how == "survey" then
+        local ok, err = pcall(almanac_survey.ask, l.sec)
+        if not ok then
+            say("! the survey: " .. tostring(err))
+        end
+        -- the entry again, scrolled where it was (now, and once more at the next update, as a scroll
+        -- view settles its content late)
+        local keep = self.detail:GetCurrentScrollPos()
+        self:ShowEntry(l.sec)
+        self.detail:SetScrollPos(keep)
+        self.detail_scroll = keep
+        return
+    end
+    if l.how == "tree" then
         self:ShowTree(l.sec)
         return
     end
@@ -460,8 +479,9 @@ function AlmanacPage:ShowEntry(sec)
         y = 104
     end
     -- a line; one naming another artifact (link) in the link color, with a clear button over it
-    -- that goes to that artifact's entry, or (tree) opens the artifact's crafting tree
-    local function line(node, s, role, link, tree)
+    -- that goes to that artifact's entry, or (how) opens the artifact's crafting tree ("tree") or
+    -- asks the survey about it ("survey")
+    local function line(node, s, role, link, how)
         local t = xml:InitTextWnd(node, entry)
         t:SetWndPos(vector2():set(0, y))
         t:SetText(s)
@@ -482,7 +502,7 @@ function AlmanacPage:ShowEntry(sec)
             btn:SetWndPos(vector2():set(0, y))
             btn:SetWndSize(vector2():set(entry:GetWidth(), t:GetHeight()))
             self:Register(btn, "link_" .. k)
-            self.links[k] = { sec = link, text = t, btn = btn, tree = tree and true or nil }
+            self.links[k] = { sec = link, text = t, btn = btn, how = how }
         end
         y = y + t:GetHeight() + 2
         return t
@@ -510,13 +530,18 @@ function AlmanacPage:ShowEntry(sec)
             line("entry_line", e.description, "body")
         end
     end
+    self.survey_y = nil
     for _, b in ipairs(e.blocks) do
         if b.heading then
             rule()
+            -- where the survey's block starts, to keep it in view after a question
+            if b.survey then
+                self.survey_y = y
+            end
             line("entry_heading", b.heading)
         end
         for _, l in ipairs(b.lines) do
-            line("entry_line", l[1], l[2], l[3], l[4] == "tree")
+            line("entry_line", l[1], l[2], l[3], l[4])
         end
     end
     entry:SetWndSize(vector2():set(entry:GetWidth(), y + GAP))
@@ -713,6 +738,16 @@ end
 -- the entry's scroll view, for a test that scrolls it
 function detail_of(w)
     return w and w.detail
+end
+
+-- the entry shown, scrolled to its survey block (a check's captures use it)
+function show_survey(w)
+    if w and w.survey_y then
+        w.detail:SetScrollPos(w.survey_y)
+        w.detail_scroll = w.survey_y
+        return true
+    end
+    return false
 end
 
 -- the tree's scroll view, the same

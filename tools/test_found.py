@@ -33,12 +33,14 @@ MUTANTS = {
     "load_plain": ("                out[sec] = plain(at)\n", "                out[sec] = at\n"),
     "learn_found": ("    if not a or found[a] or learned[a] then\n", "    if not a or learned[a] then\n"),
     "learn_once": ("    if not a or found[a] or learned[a] then\n", "    if not a or found[a] then\n"),
-    "learn_saved": (", learned = plain_all(learned) }", " }"),
+    "learn_saved": (", learned = plain_all(learned),", ","),
     "learn_quiet": ("    learned[a] = at\n    if not quiet then\n", "    learned[a] = at\n    if true then\n"),
     "strip_comma": ('s = ok and type(s) == "string" and s:gsub("[,%s]+$", "") or nil',
                     's = ok and type(s) == "string" and s or nil'),
     "vertex_check": ("    if gg and gg:valid_vertex_id(place.gv) then\n", "    if gg then\n"),
     "schema": ("m_data.almanac = { v = SCHEMA, found = plain_all(found)", "m_data.almanac = { found = plain_all(found)"),
+    "survey_saved": ("                       survey = ok and survey or nil }", "                       survey = nil }"),
+    "survey_restored": ("        pcall(almanac_survey.restore, type(d) == \"table\" and d.survey or nil)\n", ""),
     "who": ('s = string.format(s, (how.who and how.who ~= "") and how.who or T("st_almanac_by_someone"))',
             's = string.format(s, T("st_almanac_by_someone"))'),
 }
@@ -215,13 +217,18 @@ def main():
         eq("no how", F.describe(lua.table_from({"lvl": "l01_escape"})), "Cordon")
         # save, and load into a fresh copy
         m = lua.table_from({})
+        lua.execute("SURVEY_IN = nil almanac_survey = { state = function() return { asked = 1 } end, "
+                    "restore = function(t) SURVEY_IN = t end }")
         cb.save_state(m)
         eq("schema", m.almanac.v, 1)
+        eq("the survey saved beside the finds", m.almanac.survey.asked, 1)
         saved = m.almanac.found
         eq("saved", sorted(saved.keys()), ["af_a", "af_b", "af_c", "af_d", "af_e", "af_f", "af_g", "af_h", "af_i", "af_j"])
         F2 = load(src)
         F2.on_game_start()
         g.CALLBACKS.load_state(m)
+        eq("the survey restored", g.SURVEY_IN.asked, 1)
+        g.almanac_survey = None
         eq("loaded", (F2.count_found(), F2.describe(F2.found_at("af_d")), F2.found_at("af_d").how.place.x),
            (10, "bought from Sakharov in Cordon, near the village", 1.2))
         eq("learned loaded", (F2.is_learned("af_k"), F2.is_learned("af_l"), F2.describe(F2.learned_at("af_l"))),
