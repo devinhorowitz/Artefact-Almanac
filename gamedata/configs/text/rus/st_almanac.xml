@@ -321,4 +321,187 @@
 	<string id="st_almanac_tree_sum_items">
 		<text>Изготовлений: %s, слоёв: %s. Артефактов, которые создаёт только Зона: %s; частей мутантов: %s; других предметов: %s.</text>
 	</string>
+	<string id="st_almanac_group_leads">
+		<text>Наводки</text>
+	</string>
+	<string id="st_almanac_leads_caption">
+		<text>%s: %s, до следующего выброса или пси-шторма</text>
+	</string>
+	<string id="st_almanac_lead_row">
+		<text>%s: %s</text>
+	</string>
+	<string id="st_almanac_h_survey">
+		<text>Разведка</text>
+	</string>
+	<string id="st_almanac_survey_is">
+		<text>Сейчас один лежит на локации «%s» (сообщает %s, %s).</text>
+	</string>
+	<string id="st_almanac_survey_could">
+		<text>Может появиться на локации «%s», когда вы туда придёте%s (сообщает %s, %s).</text>
+	</string>
+	<string id="st_almanac_survey_odds">
+		<text>; шансы: %s</text>
+	</string>
+	<string id="st_almanac_survey_odds_slim">
+		<text>невелики</text>
+	</string>
+	<string id="st_almanac_survey_odds_fair">
+		<text>неплохие</text>
+	</string>
+	<string id="st_almanac_survey_odds_good">
+		<text>хорошие</text>
+	</string>
+	<string id="st_almanac_survey_none">
+		<text>Приборы ничего не показывают (сообщает %s, %s).</text>
+	</string>
+	<string id="st_almanac_survey_until">
+		<text>До следующего выброса или пси-шторма.</text>
+	</string>
+	<string id="st_almanac_survey_until_when">
+		<text>До следующего выброса или пси-шторма: %s.</text>
+	</string>
+	<string id="st_almanac_survey_lapse_hour">
+		<text>меньше часа</text>
+	</string>
+	<string id="st_almanac_survey_lapse_hours">
+		<text>примерно через %s ч.</text>
+	</string>
+	<string id="st_almanac_survey_lapse_band_2">
+		<text>в течение 2 часов</text>
+	</string>
+	<string id="st_almanac_survey_lapse_band_8">
+		<text>через 2-8 часов</text>
+	</string>
+	<string id="st_almanac_survey_lapse_band_16">
+		<text>через 8-16 часов</text>
+	</string>
+	<string id="st_almanac_survey_lapse_band_clear">
+		<text>не раньше чем через 16 часов</text>
+	</string>
+	<string id="st_almanac_survey_ask_ecolog">
+		<text>Спросить у учёных, где его искать</text>
+	</string>
+	<string id="st_almanac_survey_ask_csky">
+		<text>Спросить у «Чистого неба», где его искать</text>
+	</string>
+	<string id="st_almanac_survey_ask_isg">
+		<text>Спросить у ИИГ, где его искать</text>
+	</string>
+	<string id="st_almanac_survey_asked_ecolog">
+		<text>Вопрос учёным задан в %s. Ответ придёт в течение нескольких часов.</text>
+	</string>
+	<string id="st_almanac_survey_asked_csky">
+		<text>Вопрос «Чистому небу» задан в %s. Ответ придёт в течение нескольких часов.</text>
+	</string>
+	<string id="st_almanac_survey_asked_isg">
+		<text>Вопрос ИИГ задан в %s. Ответ придёт в течение нескольких часов.</text>
+	</string>
+	<string id="st_almanac_survey_locked_ecolog">
+		<text>Учёные делятся данными при репутации от %s; у вас %s.</text>
+	</string>
+	<string id="st_almanac_survey_locked_csky">
+		<text>«Чистое небо» делится данными при репутации от %s; у вас %s.</text>
+	</string>
+	<string id="st_almanac_survey_locked_isg">
+		<text>ИИГ делится данными при репутации от %s; у вас %s.</text>
+	</string>
+	<string id="st_almanac_survey_standing_ecolog">
+		<text>Репутация у учёных: %s (может появиться: от %s; лежит сейчас: от %s).</text>
+	</string>
+	<string id="st_almanac_survey_standing_csky">
+		<text>Репутация у «Чистого неба»: %s (может появиться: от %s; лежит сейчас: от %s).</text>
+	</string>
+	<string id="st_almanac_survey_standing_isg">
+		<text>Репутация у ИИГ: %s (может появиться: от %s; лежит сейчас: от %s).</text>
+	</string>
+	<string id="st_almanac_survey_not_listed">
+		<text>Ваш детектор «%s» его не видит, и сеть не может его искать.</text>
+	</string>
+	<string id="st_almanac_survey_no_detector">
+		<text>Наденьте детектор: сеть сообщает только о том, что видит ваш детектор.</text>
+	</string>
+	<string id="st_almanac_survey_nowhere">
+		<text>Зона не создаёт их в аномальных полях: искать нечего.</text>
+	</string>
+	<string id="st_almanac_survey_busy">
+		<text>Сначала дождитесь ответа насчёт «%s».</text>
+	</string>
+	<string id="st_almanac_survey_spent">
+		<text>На сегодня вопросов больше нет. Спросите завтра.</text>
+	</string>
+	<string id="st_almanac_leader_ecolog">
+		<text>Профессор Сахаров</text>
+	</string>
+	<string id="st_almanac_leader_csky">
+		<text>Лебедев</text>
+	</string>
+	<string id="st_almanac_leader_isg">
+		<text>Майор Эрнандес</text>
+	</string>
+	<string id="st_almanac_survey_msg_is">
+		<text>«%s»: приборы показывают, что один лежит прямо сейчас на локации «%s». Кто-то может успеть раньше. До следующего выброса или пси-шторма.</text>
+	</string>
+	<string id="st_almanac_survey_msg_could">
+		<text>«%s»: может появиться на локации «%s», когда вы туда придёте. Ничего не обещаем: решает Зона. До следующего выброса или пси-шторма.</text>
+	</string>
+	<string id="st_almanac_survey_msg_odds">
+		<text>«%s»: может появиться на локации «%s», когда вы туда придёте; шансы, по-нашему, %s. До следующего выброса или пси-шторма.</text>
+	</string>
+	<string id="st_almanac_survey_msg_none">
+		<text>«%s»: пока приборы ничего не показывают. Спросите снова после следующего выброса.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey">
+		<text>Разведка</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_desc">
+		<text>Спросите научную сеть в статье артефакта, где его искать. Ответ придёт позже сообщением в КПК: локация, но не место, до следующего выброса или пси-шторма.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_network">
+		<text>Разведка: чья сеть</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_network_desc">
+		<text>Чья репутация открывает доступ к разведке. С модом Seasons of the Zone берётся сеть его прогноза, и одна репутация открывает и то и другое. «Лучшая из трёх» ориентируется на ту группировку, которая ценит вас больше всех.</text>
+	</string>
+	<string id="almanac_survey_network_lst_ecolog">
+		<text>Учёные</text>
+	</string>
+	<string id="almanac_survey_network_lst_csky">
+		<text>«Чистое небо»</text>
+	</string>
+	<string id="almanac_survey_network_lst_isg">
+		<text>ИИГ</text>
+	</string>
+	<string id="almanac_survey_network_lst_best">
+		<text>Лучшая из трёх</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_could">
+		<text>Разведка: репутация для «может появиться»</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_could_desc">
+		<text>С этой репутации сеть называет локацию, где при следующем выпадении он может появиться. Чем ближе к следующей ступени, тем вернее названная локация.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_is">
+		<text>Разведка: репутация для «лежит сейчас»</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_is_desc">
+		<text>С этой репутации сеть также сообщает, где один лежит сейчас, а если нигде, называет самую вероятную локацию и шансы.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_per_day">
+		<text>Разведка: вопросов в день</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_per_day_desc">
+		<text>Сколько вопросов сеть принимает за игровой день.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_wait_min">
+		<text>Разведка: кратчайшее ожидание ответа (игровые минуты)</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_wait_min_desc">
+		<text>Игровое время идёт в шесть раз быстрее реального: 60 игровых минут - это 10 настоящих.</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_wait_max">
+		<text>Разведка: самое долгое ожидание ответа (игровые минуты)</text>
+	</string>
+	<string id="ui_mcm_almanac_survey_wait_max_desc">
+		<text>Ответ приходит в случайный момент между кратчайшим и самым долгим ожиданием и ждёт, пока пройдёт выброс или пси-шторм.</text>
+	</string>
 </string_table>

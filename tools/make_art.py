@@ -11,7 +11,7 @@
   junk carries no tier mark), tiers 1 to 4 as the game shows them (N chevrons for tier N, as GRIP
   marks an artifact's tier on its icon), other (a dashed ring); the last cell is left clear for the tabs' buttons, which
   only take the clicks (a 3t button keeps its texture at its XML size, so the page draws the tabs'
-  panels itself).
+  panels itself). A second row holds the survey's leads (a mast sending its waves).
 
     python make_art.py [PREVIEW.png]
 """
@@ -33,6 +33,7 @@ STATES = {                            # quadrant origin -> color
 SS = 4                                # supersampling for smooth edges
 MARK = 64                             # a mark's cell in almanac_marks.dds
 MARKS = ["all", "junk", "t1", "t2", "t3", "t4", "other"]
+MARKS2 = ["leads"]                    # the second row
 
 
 def shape():
@@ -102,6 +103,15 @@ def mark_mask(name):
         d.ellipse(s(13, 13, 51, 51), fill=255)
         for x, y, r in ((25, 25, 5), (39, 31, 4), (28, 40, 3.5)):
             d.ellipse(s(x - r, y - r, x + r, y + r), fill=0)
+    elif name == "leads":
+        # a mast sending its waves: a dot on a short mast, two arcs on each side
+        d.ellipse(s(27, 22, 37, 32), fill=255)
+        d.line(s(32, 30, 32, 54), fill=255, width=5 * SS)
+        d.line(s(24, 54, 40, 54), fill=255, width=5 * SS)
+        for r in (12, 21):
+            box = s(32 - r, 27 - r, 32 + r, 27 + r)
+            d.arc(box, -50, 50, fill=255, width=5 * SS)
+            d.arc(box, 130, 230, fill=255, width=5 * SS)
     elif name == "other":
         # a dashed ring: eight gaps
         d.ellipse(s(12, 12, 52, 52), fill=255)
@@ -124,9 +134,9 @@ def mark_mask(name):
 
 
 def marks():
-    """The marks, white outlined in black, then a clear cell."""
-    out = Image.new("RGBA", (MARK * len(MARKS) + MARK, MARK), (0, 0, 0, 0))
-    for i, name in enumerate(MARKS):
+    """The marks, white outlined in black, then a clear cell; the second row's below."""
+    out = Image.new("RGBA", (MARK * len(MARKS) + MARK, MARK * 2), (0, 0, 0, 0))
+    for i, name in enumerate(MARKS + MARKS2):
         fill = mark_mask(name)
         edge = fill.filter(ImageFilter.MaxFilter(5))
         cell = Image.new("RGBA", (MARK, MARK), (0, 0, 0, 0))
@@ -134,7 +144,8 @@ def marks():
         white = Image.new("RGBA", (MARK, MARK), (255, 255, 255, 0))
         white.putalpha(fill)
         cell.alpha_composite(white)
-        out.paste(cell, (i * MARK, 0))
+        row, col = divmod(i, len(MARKS)) if i >= len(MARKS) else (0, i)
+        out.paste(cell, (col * MARK, row * MARK))
     return out
 
 

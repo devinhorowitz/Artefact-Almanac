@@ -11,6 +11,18 @@ function on_mcm_load()
               size = { 512, 50 }, spacing = 20 },
             { id = "jailbreak", type = "check", val = 1, def = false },
             { id = "news", type = "check", val = 1, def = true },
+            -- the survey (almanac_survey): the network when Seasons of the Zone doesn't pick it, the
+            -- standing each kind of word takes, the questions a game day, and the wait for word
+            -- (game minutes)
+            { id = "survey", type = "check", val = 1, def = true },
+            { id = "survey_network", type = "list", val = 0, def = "ecolog", content = {
+                { "ecolog", "ecolog" }, { "csky", "csky" }, { "isg", "isg" },
+                { "best", "best" } } },
+            { id = "survey_could", type = "track", val = 2, min = 0, max = 1000, step = 50, def = 200 },
+            { id = "survey_is", type = "track", val = 2, min = 0, max = 1500, step = 50, def = 700 },
+            { id = "survey_per_day", type = "track", val = 2, min = 1, max = 5, step = 1, def = 1 },
+            { id = "survey_wait_min", type = "track", val = 2, min = 0, max = 360, step = 10, def = 60 },
+            { id = "survey_wait_max", type = "track", val = 2, min = 0, max = 720, step = 10, def = 180 },
             { id = "tab_key", type = "key_bind", val = 2, def = -1 },
             { id = "about", type = "desc", text = "ui_mcm_almanac_about" },
         },

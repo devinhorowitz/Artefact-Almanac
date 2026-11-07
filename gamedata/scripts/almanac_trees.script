@@ -16,7 +16,7 @@ eagerness" achievement. Nothing here is saved or changed.
     almanac_trees.book_known(book)     whether the workshop would let the player use a book
 --]]
 
-VERSION = "1.0.1"
+VERSION = "1.1.0"
 
 local KIND_JUNK = "i_arty_junk"
 

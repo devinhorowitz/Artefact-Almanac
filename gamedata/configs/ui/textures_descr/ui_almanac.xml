@@ -22,6 +22,8 @@
 		<texture id="almanac_mark_t3" x="256" y="0" width="64" height="64" />
 		<texture id="almanac_mark_t4" x="320" y="0" width="64" height="64" />
 		<texture id="almanac_mark_other" x="384" y="0" width="64" height="64" />
+		<!-- the second row: the survey's leads -->
+		<texture id="almanac_mark_leads" x="0" y="64" width="64" height="64" />
 		<texture id="almanac_tab_e" x="452" y="4" width="8" height="8" />
 		<texture id="almanac_tab_h" x="452" y="4" width="8" height="8" />
 		<texture id="almanac_tab_t" x="452" y="4" width="8" height="8" />

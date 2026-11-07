@@ -1,0 +1,700 @@
+--[[
+Artefact Almanac: the survey. On an artifact's entry the player asks a scientific network where one
+could be, and word comes back later as a PDA message in the network leader's voice: a level, never
+a spot, good until the next emission or psi storm. It spawns, moves and reserves nothing; every
+answer is read from the world as it is when the word is sent.
+
+- The network is Seasons of the Zone's forecast network when Seasons runs (one standing buys both),
+  else MCM's pick: the Ecologists, Clear Sky, the ISG, or the best of the three.
+- Standing with it is the gate (MCM, as Seasons' forecast): from 200, "one could turn up": a level
+  the Zone will roll again when the player gets there (Artefacts Reinvention's fields after an
+  emission, Dynamic Anomalies' list after its own update), named in proportion to its odds, so a
+  poor level is often named; the nearer to 700, the likelier the named level. From 700, "there is
+  one": one lying free now, which no despawner will take before the word lapses; else the likeliest
+  level, with its odds in a word.
+- The detector in the player's slot must list the artifact: the network reports only what it senses.
+- One question a game day (MCM), one waiting at a time; word comes 1 to 3 game hours later (MCM),
+  held while an emission or psi storm is on.
+- Every lead lapses when an emission or psi storm ends, as the fields roll again.
+
+Saved by almanac_found under m_data.almanac.survey, plain values (state and restore).
+--]]
+
+VERSION = "1.1.0"
+
+-- the networks, in the order "the best of the three" breaks a tie: who speaks, and his portrait
+NETWORKS = { "ecolog", "csky", "isg" }
+LEADERS = {
+    ecolog = { name = "st_almanac_leader_ecolog", icon = "ui_inGame2_sakharov" },
+    csky = { name = "st_almanac_leader_csky", icon = "ui_inGame2_lebedev" },
+    isg = { name = "st_almanac_leader_isg", icon = "ui_inGame2_Hernandez" },
+}
+DEFAULTS = { survey = true, survey_network = "ecolog", survey_could = 200, survey_is = 700, survey_per_day = 1,
+             survey_wait_min = 60, survey_wait_max = 180 }
+DETECTOR_SLOT = 9
+CHECK_MS = 2000         -- how often a waiting question is looked at
+DESPAWN_MARGIN = 86400  -- a free artifact this near the despawner's limit (game seconds) isn't named
+-- Dynamic Anomalies' own defaults, where its MCM can't be read
+DAO = { artefacts_spawn_chance = 15, max_artefacts_per_zone = 2, random_artefact_spawn_chance = 25,
+        anomaly_zone_spawn_chance = 0.5 }
+ODDS = { { 0.15, "slim" }, { 0.4, "fair" } }    -- below each the word; else "good"
+
+local q = nil           -- the question waiting: { sec, net, tier, s, due, y, mo, d, h, mi }
+local leads = {}        -- section -> the word on it: { kind, lvl, net, odds, y, mo, d, h, mi }
+local day_n, asked = 0, 0
+local next_check
+local smarts_by_level   -- smart terrains per level, counted once per load
+
+local function T(id)
+    return game.translate_string(id)
+end
+
+local function log(fmt, ...)
+    printf("[almanac-survey] " .. fmt, ...)
+end
+
+function mcm(id)
+    local ok, v = pcall(function() return ui_mcm and ui_mcm.get("almanac/" .. id) end)
+    if ok and v ~= nil then
+        return v
+    end
+    return DEFAULTS[id]
+end
+
+function enabled()
+    return mcm("survey") ~= false
+end
+
+---------------------------------------------------------------------------------------------
+-- time
+---------------------------------------------------------------------------------------------
+
+-- days from 1970-01-01 to a date (the proleptic Gregorian calendar)
+function days(y, m, d)
+    y = m <= 2 and y - 1 or y
+    local era = math.floor(y / 400)
+    local yoe = y - era * 400
+    local mp = (m + 9) % 12
+    local doy = math.floor((153 * mp + 2) / 5) + d - 1
+    local doe = yoe * 365 + math.floor(yoe / 4) - math.floor(yoe / 100) + doy
+    return era * 146097 + doe - 719468
+end
+
+-- the game's clock in whole seconds, from CTime:get's fields (diffSec from a default CTime is a float
+-- that moves in 4,096 s steps)
+function game_sec()
+    local y, mo, d, h, mi, s = game.get_game_time():get(0, 0, 0, 0, 0, 0, 0)
+    return days(y, mo, d) * 86400 + h * 3600 + mi * 60 + (s or 0)
+end
+
+local function today()
+    local y, mo, d = game.get_game_time():get(0, 0, 0, 0, 0, 0, 0)
+    return y * 10000 + mo * 100 + d
+end
+
+local function stamp(t)
+    local y, mo, d, h, mi = game.get_game_time():get(0, 0, 0, 0, 0, 0, 0)
+    t.y, t.mo, t.d, t.h, t.mi = y, mo, d, h, mi
+    return t
+end
+
+-- whether an emission or psi storm is on: word waits for it to pass
+function storm_on()
+    local ok, on = pcall(function()
+        local s = surge_manager.get_surge_manager()
+        local p = psi_storm_manager.get_psi_storm_manager()
+        return (s and s.started) or (p and p.started)
+    end)
+    return ok and on and true or false
+end
+
+---------------------------------------------------------------------------------------------
+-- the gate: the network, its standing, the detector
+---------------------------------------------------------------------------------------------
+
+function goodwill(net)
+    local ok, v = pcall(function() return relation_registry.community_goodwill(net, AC_ID) end)
+    return ok and tonumber(v) or 0
+end
+
+-- the network asked: Seasons' forecast network when it runs, else MCM's pick; and whether it's
+-- Seasons'
+function network()
+    local ok, b = pcall(function() return sotz_api and sotz_api.blowout() end)
+    if ok and type(b) == "table" and LEADERS[b.faction] then
+        return b.faction, true
+    end
+    local choice = mcm("survey_network")
+    if choice == "best" then
+        local top, from
+        for _, n in ipairs(NETWORKS) do
+            local v = goodwill(n)
+            if top == nil or v > top then
+                top, from = v, n
+            end
+        end
+        return from, false
+    end
+    return LEADERS[choice] and choice or "ecolog", false
+end
+
+-- what the standing buys: { net, standing, need, need_is, tier ("locked", "could", "is"), s (0 at
+-- the first step, 1 at the second) }
+function gate()
+    local net = network()
+    local st = goodwill(net)
+    local need, need_is = tonumber(mcm("survey_could")) or 200, tonumber(mcm("survey_is")) or 700
+    local tier = (st >= need_is and "is") or (st >= need and "could") or "locked"
+    local s = math.max(0, math.min(1, (st - need) / math.max(1, need_is - need)))
+    return { net = net, standing = st, need = need, need_is = need_is, tier = tier, s = s }
+end
+
+-- the detector in the slot, and whether it lists an artifact: (section or nil, true/false)
+function detector_lists(sec)
+    local d = db.actor and db.actor:item_in_slot(DETECTOR_SLOT)
+    if not d then
+        return nil, false
+    end
+    local list = almanac_data.catalog().detectors[d:section()]
+    for _, a in ipairs(list or {}) do
+        if a == sec then
+            return d:section(), true
+        end
+    end
+    return d:section(), false
+end
+
+-- whether the Zone makes it where a survey can look: a field, Dynamic Anomalies
+function surveyable(a)
+    return a ~= nil and (next(a.fields) ~= nil or next(a.dao) ~= nil or a.dao_random == true)
+end
+
+local function new_day()
+    local d = today()
+    if d ~= day_n then
+        day_n, asked = d, 0
+    end
+end
+
+-- why the player can't ask about an artifact now, or nil when he can: "nowhere", "locked",
+-- "no_detector", "not_listed", "waiting", "spent"
+function why_not(sec, g)
+    local a = almanac_data.catalog().artifacts[sec]
+    if not surveyable(a) then
+        return "nowhere"
+    end
+    g = g or gate()
+    if g.tier == "locked" then
+        return "locked"
+    end
+    local d, listed = detector_lists(sec)
+    if not d then
+        return "no_detector"
+    end
+    if not listed then
+        return "not_listed"
+    end
+    if q then
+        return "waiting"
+    end
+    new_day()
+    if asked >= (tonumber(mcm("survey_per_day")) or 1) then
+        return "spent"
+    end
+    return nil
+end
+
+-- ask about an artifact: true when asked; word comes after the MCM wait
+function ask(sec)
+    local g = gate()
+    if why_not(sec, g) then
+        return false
+    end
+    local lo, hi = tonumber(mcm("survey_wait_min")) or 60, tonumber(mcm("survey_wait_max")) or 180
+    if hi < lo then
+        lo, hi = hi, lo
+    end
+    local wait = math.floor((lo + (hi - lo) * math.random()) * 60)
+    q = stamp({ sec = sec, net = g.net, tier = g.tier, s = g.s, due = game_sec() + wait })
+    asked = asked + 1
+    log("asked %s about %s (%s, standing %s), word in %s game minutes", g.net, sec, g.tier, g.standing,
+        math.floor(wait / 60))
+    return true
+end
+
+---------------------------------------------------------------------------------------------
+-- the answer: read from the world when the word is sent
+---------------------------------------------------------------------------------------------
+
+local function respawn_levels()
+    local m = alife_storage_manager and alife_storage_manager.get_state()
+    return type(m) == "table" and type(m.artefact_respawn_levels) == "table" and m.artefact_respawn_levels or {}
+end
+
+-- whether Dynamic Anomalies rolls a level again when the player gets there: an emission it took
+-- part in came after its last roll there
+function dao_due(lvl)
+    local m = drx_da_main
+    if not (m and type(m.last_surge_time) == "number") then
+        return false
+    end
+    local t = type(m.updated_anomaly_levels) == "table" and m.updated_anomaly_levels[lvl]
+    local at = type(t) == "table" and tonumber(t.time) or -1
+    return m.last_surge_time > at
+end
+
+local function dao_setting(id)
+    local ok, v = pcall(function() return ui_mcm and ui_mcm.get("drx_da/" .. id) end)
+    return ok and tonumber(v) or DAO[id]
+end
+
+-- the smart terrains on each level (Dynamic Anomalies puts its anomalies, and their artifacts, on
+-- them)
+local function smarts_on(lvl)
+    if not smarts_by_level then
+        smarts_by_level = {}
+        local sb = SIMBOARD and SIMBOARD.smarts
+        for _, s in pairs(type(sb) == "table" and sb or {}) do
+            local se = type(s) == "table" and s.smrt
+            if se then
+                local l = almanac_census.level_of(se)
+                smarts_by_level[l] = (smarts_by_level[l] or 0) + 1
+            end
+        end
+    end
+    return smarts_by_level[lvl] or 0
+end
+
+local function underground(lvl)
+    local ok, w = pcall(function() return game_ini():r_string_ex(lvl, "weathers") end)
+    local small = drx_da_main and type(drx_da_main.small_levels) == "table" and drx_da_main.small_levels[lvl]
+    return (ok and type(w) == "string" and w:find("indoor") ~= nil) or small and true or false
+end
+
+-- how many of an artifact the Zone's next roll on a level is expected to make: its fields (each
+-- picks once, at the eco chance, a layer of its own at random), when Artefacts Reinvention's
+-- post-emission roll is due there; Dynamic Anomalies' rolls (its smarts with anomalies, each up to
+-- its maximum, its list or, now and then, its random pick), when its update is due
+function expected(C, sec, lvl, due)
+    local e = 0
+    if due[lvl] == true then
+        local p = 0.25
+        pcall(function() p = game_difficulties.get_eco_factor("arty_chance") or 0.25 end)
+        local ok, geo = pcall(function() return game_achievements.has_achievement("geologist") end)
+        p = math.min(1, p + ((ok and geo) and 0.05 or 0))
+        for _, f in ipairs(C.fields) do
+            if f.level == lvl and #f.layers > 0 then
+                local sum = 0
+                for _, lay in ipairs(f.layers) do
+                    sum = sum + (lay.picks[sec] or 0)
+                end
+                e = e + p * sum / #f.layers
+            end
+        end
+    end
+    local D = C.dao
+    if D and dao_due(lvl) then
+        local count = D.levels[lvl]
+        local share = 0
+        if count then
+            local n = 0
+            for _, k in pairs(count) do
+                n = n + k
+            end
+            share = n > 0 and (count[sec] or 0) / n or 0
+        end
+        local n_allowed = 0
+        for _ in pairs(D.allowed) do
+            n_allowed = n_allowed + 1
+        end
+        local r = dao_setting("random_artefact_spawn_chance") / 100
+        local per_roll = count and ((1 - r) * share + r * (D.allowed[sec] and 1 / math.max(1, n_allowed) or 0))
+            or (D.allowed[sec] and 1 / math.max(1, n_allowed) or 0)
+        local chance = (tonumber(D.chances[lvl]) or math.ceil(dao_setting("artefacts_spawn_chance")
+            * (underground(lvl) and 2 or 1))) / 100
+        local rolls = smarts_on(lvl) * dao_setting("anomaly_zone_spawn_chance") * dao_setting("max_artefacts_per_zone")
+        e = e + rolls * math.min(1, chance) * per_roll
+    end
+    return e
+end
+
+-- the levels the next roll could make one on, with how many it's expected to: never the player's own
+-- (its fields rolled when the storm ended there), each due a roll; sorted by name
+function could_levels(C, sec)
+    local due = respawn_levels()
+    local here = level.name()
+    local seen, out = {}, {}
+    local function try(lvl)
+        if lvl and lvl ~= here and not seen[lvl] then
+            seen[lvl] = true
+            local e = expected(C, sec, lvl, due)
+            if e > 0 then
+                out[#out + 1] = { lvl = lvl, w = e }
+            end
+        end
+    end
+    for _, f in ipairs(C.fields) do
+        try(f.level)
+    end
+    if C.dao then
+        for lvl in pairs(C.dao.levels) do
+            try(lvl)
+        end
+        if C.dao.allowed[sec] then
+            for lvl in pairs(type(drx_da_main) == "table" and type(drx_da_main.updated_anomaly_levels) == "table"
+                    and drx_da_main.updated_anomaly_levels or {}) do
+                try(lvl)
+            end
+        end
+    end
+    table.sort(out, function(x, y) return x.lvl < y.lvl end)
+    return out
+end
+
+-- a level named from the candidates, each in proportion to its weight raised to 1 + 3s: at s = 0 a
+-- poor level is often named, near s = 1 seldom. rnd gives a number in [0, 1)
+function pick(cands, s, rnd)
+    local total, ws = 0, {}
+    for i, c in ipairs(cands) do
+        ws[i] = c.w ^ (1 + 3 * s)
+        total = total + ws[i]
+    end
+    local x = (rnd or math.random)() * total
+    for i, c in ipairs(cands) do
+        x = x - ws[i]
+        if x < 0 then
+            return c
+        end
+    end
+    return cands[#cands]
+end
+
+-- the likeliest level
+function best(cands)
+    local b
+    for _, c in ipairs(cands) do
+        if not b or c.w > b.w then
+            b = c
+        end
+    end
+    return b
+end
+
+-- the odds of at least one, in a word
+function odds_word(e)
+    local p = 1 - math.exp(-e)
+    for _, o in ipairs(ODDS) do
+        if p < o[1] then
+            return o[2]
+        end
+    end
+    return "good"
+end
+
+-- the display cases' copies of what they hold (Hideout Furniture): held by no one, never free
+local function display_copies()
+    local out = {}
+    local cases = weapon_showcase and weapon_showcase.weapon_displays
+    for _, items in pairs(type(cases) == "table" and cases or {}) do
+        for _, id in pairs(type(items) == "table" and items or {}) do
+            out[id] = true
+        end
+    end
+    return out
+end
+
+-- whether the despawner will have released a free artifact before the word lapses
+local function despawned_soon(id, sec, now)
+    local G = grok_artefact_despawner
+    if not G or (type(G.ah_af_sections) == "table" and G.ah_af_sections[sec]) then
+        return false
+    end
+    local t = type(G.artefacts_spawned_time) == "table" and G.artefacts_spawned_time[id]
+    if type(t) ~= "table" then
+        return false    -- unseen: its clock starts when the player gets there
+    end
+    local at = days(t.Y, t.M, t.D) * 86400 + (t.h or 0) * 3600 + (t.m or 0) * 60 + (t.s or 0)
+    return now - at + DESPAWN_MARGIN >= (tonumber(G.af_spawn_duration_limit) or 432000)
+end
+
+-- the levels where one lies free now, held by no one and to be found there: not a display case's copy,
+-- not one Dynamic Anomalies clears when the player gets there, not one the despawner releases
+-- before the word lapses. { [level] = count }
+function free_ones(sec)
+    local sim = alife()
+    local now = game_sec()
+    local copies = display_copies()
+    local dao = type(drx_da_main) == "table" and type(drx_da_main.updated_anomaly_levels) == "table"
+        and drx_da_main.updated_anomaly_levels or {}
+    local out = {}
+    for id = 1, 65534 do
+        local se = sim:object(id)
+        if se and se:section_name() == sec and IsArtefact(se) and (se.parent_id == nil or se.parent_id >= 65535)
+                and not copies[id] then
+            local lvl = almanac_census.level_of(se)
+            local d = dao[lvl]
+            local cleared = type(d) == "table" and type(d.artefacts) == "table" and d.artefacts[id] ~= nil and dao_due(lvl)
+            if not cleared and not despawned_soon(id, sec, now) then
+                out[lvl] = (out[lvl] or 0) + 1
+            end
+        end
+    end
+    return out
+end
+
+-- the word on a question: { kind = "is", lvl } | { kind = "could", lvl, odds } | { kind = "none" }
+function answer(question, rnd)
+    local C = almanac_data.catalog()
+    local sec = question.sec
+    if question.tier == "is" then
+        local where, most = nil, 0
+        for lvl, n in pairs(free_ones(sec)) do
+            if n > most or (n == most and where and lvl < where) then
+                where, most = lvl, n
+            end
+        end
+        if where then
+            return { kind = "is", lvl = where }
+        end
+    end
+    local cands = could_levels(C, sec)
+    if #cands == 0 then
+        return { kind = "none" }
+    end
+    if question.tier == "is" then
+        local b = best(cands)
+        return { kind = "could", lvl = b.lvl, odds = odds_word(b.w) }
+    end
+    return { kind = "could", lvl = pick(cands, question.s or 0, rnd).lvl }
+end
+
+-- the network's message on a lead, in its leader's voice; MCM's "Messages" off keeps it in the log
+local function tell(sec, w, net)
+    local name = almanac_data.catalog().artifacts[sec].name
+    local text
+    if w.kind == "is" then
+        text = string.format(T("st_almanac_survey_msg_is"), name, T(w.lvl))
+    elseif w.kind == "could" and w.odds then
+        text = string.format(T("st_almanac_survey_msg_odds"), name, T(w.lvl), T("st_almanac_survey_odds_" .. w.odds))
+    elseif w.kind == "could" then
+        text = string.format(T("st_almanac_survey_msg_could"), name, T(w.lvl))
+    else
+        text = string.format(T("st_almanac_survey_msg_none"), name)
+    end
+    local who = LEADERS[net] or LEADERS.ecolog
+    if almanac_found and not almanac_found.news() then
+        log("PDA (silenced): %s", text)
+        return
+    end
+    if db.actor then
+        pcall(function() xr_sound.set_sound_play(AC_ID, "pda_tips") end)
+        db.actor:give_game_news(T(who.name), text, who.icon, 0, 15000, 0)
+    end
+    log("PDA: %s", text)
+end
+
+-- the waiting question, answered once its time has come and no storm is on; true when it was
+function deliver(rnd)
+    if not q or game_sec() < q.due or storm_on() then
+        return false
+    end
+    local question = q
+    q = nil
+    local w = answer(question, rnd)
+    w.net = question.net
+    leads[question.sec] = stamp(w)
+    tell(question.sec, w, question.net)
+    return true
+end
+
+-- every lead lapses when the fields roll again
+function lapse()
+    leads = {}
+end
+
+---------------------------------------------------------------------------------------------
+-- what the page shows
+---------------------------------------------------------------------------------------------
+
+-- the word on an artifact, or nil
+function lead(sec)
+    return leads[sec]
+end
+
+-- the artifacts with a lead to follow ("there is one", "one could"), by section
+function leads_list()
+    local out = {}
+    for sec, w in pairs(leads) do
+        if w.kind ~= "none" then
+            out[#out + 1] = sec
+        end
+    end
+    table.sort(out)
+    return out
+end
+
+-- the question waiting, or nil
+function waiting()
+    return q
+end
+
+local function clock(t)
+    return string.format("%02d:%02d", t.h or 0, t.mi or 0)
+end
+
+-- when the word lapses, as Seasons' forecast puts it: the hours to the nearer of the emission and
+-- the psi storm at its exact tier, the nearer bracket at its coarse one; nil without it
+local BANDS = { ["WITHIN 2 HOURS"] = { 1, "2" }, ["2 to 8 hours"] = { 2, "8" }, ["8 to 16 hours"] = { 3, "16" },
+                ["ALL CLEAR"] = { 4, "clear" } }
+function lapses_in()
+    local ok, b = pcall(function() return sotz_api and sotz_api.blowout() end)
+    if not (ok and type(b) == "table") then
+        return nil
+    end
+    local secs, band
+    for _, e in ipairs({ b.emission, b.psi }) do
+        if type(e) == "table" then
+            if tonumber(e.seconds) then
+                secs = math.min(secs or math.huge, tonumber(e.seconds))
+            end
+            local x = BANDS[tostring(e.band)]
+            if x and (not band or x[1] < band[1]) then
+                band = x
+            end
+        end
+    end
+    if secs then
+        return secs < 3600 and T("st_almanac_survey_lapse_hour")
+            or string.format(T("st_almanac_survey_lapse_hours"), math.floor(secs / 3600 + 0.5))
+    end
+    return band and T("st_almanac_survey_lapse_band_" .. band[2]) or nil
+end
+
+-- an entry's survey block: the word on it, the question waiting, the link to ask or why not, the
+-- standing; nil when the survey is off
+function block(sec)
+    if not enabled() then
+        return nil
+    end
+    local lines = {}
+    local w = leads[sec]
+    if w then
+        local who = T((LEADERS[w.net] or LEADERS.ecolog).name)
+        if w.kind == "is" then
+            lines[#lines + 1] = { string.format(T("st_almanac_survey_is"), T(w.lvl), who, clock(w)), "good" }
+        elseif w.kind == "could" then
+            local odds = w.odds and string.format(T("st_almanac_survey_odds"), T("st_almanac_survey_odds_" .. w.odds)) or ""
+            lines[#lines + 1] = { string.format(T("st_almanac_survey_could"), T(w.lvl), odds, who, clock(w)), "heading" }
+        else
+            lines[#lines + 1] = { string.format(T("st_almanac_survey_none"), who, clock(w)), "dim" }
+        end
+        local when = lapses_in()
+        lines[#lines + 1] = { when and string.format(T("st_almanac_survey_until_when"), when)
+                              or T("st_almanac_survey_until"), "dim" }
+    end
+    local g = gate()
+    if q and q.sec == sec then
+        lines[#lines + 1] = { string.format(T("st_almanac_survey_asked_" .. q.net), clock(q)), "body" }
+    end
+    local why = why_not(sec, g)
+    if why == nil then
+        lines[#lines + 1] = { T("st_almanac_survey_ask_" .. g.net), "body", sec, "survey" }
+    elseif why == "locked" then
+        lines[#lines + 1] = { string.format(T("st_almanac_survey_locked_" .. g.net), g.need, g.standing), "dim" }
+    elseif why == "not_listed" then
+        local d = detector_lists(sec)
+        lines[#lines + 1] = { string.format(T("st_almanac_survey_not_listed"), T(ini_sys:r_string_ex(d, "inv_name") or d)), "dim" }
+    elseif why == "waiting" and q.sec ~= sec then
+        local other = almanac_data.catalog().artifacts[q.sec]
+        lines[#lines + 1] = { string.format(T("st_almanac_survey_busy"), other and other.name or q.sec), "dim" }
+    elseif why ~= "waiting" then
+        lines[#lines + 1] = { T("st_almanac_survey_" .. why), "dim" }
+    end
+    if why ~= "nowhere" and why ~= "locked" then
+        lines[#lines + 1] = { string.format(T("st_almanac_survey_standing_" .. g.net), g.standing, g.need, g.need_is), "dim" }
+    end
+    return { heading = T("st_almanac_h_survey"), lines = lines, survey = true }
+end
+
+---------------------------------------------------------------------------------------------
+-- the save (almanac_found writes m_data.almanac, with this as its survey)
+---------------------------------------------------------------------------------------------
+
+local TIME_KEYS = { "y", "mo", "d", "h", "mi" }
+
+local function plain_time(t, out)
+    for _, k in ipairs(TIME_KEYS) do
+        out[k] = tonumber(t[k]) or 0
+    end
+    return out
+end
+
+local function plain_lead(w)
+    if type(w) ~= "table" or (w.kind ~= "is" and w.kind ~= "could" and w.kind ~= "none") then
+        return nil
+    end
+    return plain_time(w, { kind = w.kind, lvl = type(w.lvl) == "string" and w.lvl or nil,
+                          net = LEADERS[w.net] and w.net or "ecolog", odds = type(w.odds) == "string" and w.odds or nil })
+end
+
+local function plain_question(x)
+    if type(x) ~= "table" or type(x.sec) ~= "string" or not tonumber(x.due) then
+        return nil
+    end
+    return plain_time(x, { sec = x.sec, net = LEADERS[x.net] and x.net or "ecolog",
+                          tier = (x.tier == "is" or x.tier == "could") and x.tier or "could",
+                          s = tonumber(x.s) or 0, due = tonumber(x.due) })
+end
+
+-- what goes into the save: plain values only
+function state()
+    local out = { day = day_n, asked = asked, q = plain_question(q), leads = {} }
+    for sec, w in pairs(leads) do
+        out.leads[sec] = plain_lead(w)
+    end
+    return out
+end
+
+-- what a save held (nil: nothing)
+function restore(t)
+    t = type(t) == "table" and t or {}
+    day_n, asked = tonumber(t.day) or 0, tonumber(t.asked) or 0
+    q = plain_question(t.q)
+    leads = {}
+    for sec, w in pairs(type(t.leads) == "table" and t.leads or {}) do
+        if type(sec) == "string" then
+            leads[sec] = plain_lead(w)
+        end
+    end
+    smarts_by_level = nil
+end
+
+---------------------------------------------------------------------------------------------
+
+local function actor_on_first_update()
+    next_check = time_global() + CHECK_MS
+end
+
+local function actor_on_update()
+    if not next_check or time_global() < next_check then
+        return
+    end
+    next_check = time_global() + CHECK_MS
+    local ok, err = pcall(deliver)
+    if not ok then
+        q = nil
+        log("! the answer: %s", tostring(err))
+    end
+end
+
+local function actor_on_interaction(typ, obj, name)
+    if typ == "anomalies" and (name == "emission_end" or name == "psi_storm_end") then
+        lapse()
+    end
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
+    RegisterScriptCallback("actor_on_update", actor_on_update)
+    RegisterScriptCallback("actor_on_interaction", actor_on_interaction)
+end

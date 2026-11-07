@@ -14,7 +14,7 @@ the Zone makes it (a field, Dynamic Anomalies, a recipe); a known one is always 
     almanac_page.tree(sec, have)     the crafting tree view: its layers, rows and nodes in words
 --]]
 
-VERSION = "1.0.1"
+VERSION = "1.1.0"
 
 -- the page's tabs, in order: every artifact, then junk, then each tier as the game shows it, then
 -- the rest. A group's tier is the configs' (see shown_tier): tier 1 holds the configs' tier 2
@@ -23,6 +23,8 @@ GROUPS = {
     { id = "junk", kind = "i_arty_junk" },
     { id = "t1", tier = 2 }, { id = "t2", tier = 3 }, { id = "t3", tier = 4 }, { id = "t4", tier = 5 },
     { id = "other" },
+    -- the artifacts the survey has word on (almanac_survey), shown while there is any
+    { id = "leads", leads = true },
 }
 MAX_LEVELS = 8      -- levels a "where" line names before "and N more"
 
@@ -77,10 +79,20 @@ function turns_up(a)
     return next(a.fields) ~= nil or next(a.dao) ~= nil or a.dao_random or #a.made_by > 0
 end
 
+-- the survey's word on an artifact, or nil
+function lead_of(sec)
+    local ok, w = pcall(function() return almanac_survey and almanac_survey.lead(sec) end)
+    return ok and w or nil
+end
+
 -- whether a group holds an artifact
 function in_group(g, a)
     if g.id == "all" then
         return true
+    end
+    if g.leads then
+        local w = lead_of(a.sec)
+        return w ~= nil and w.kind ~= "none"
     end
     if g.kind then
         return a.kind == g.kind
@@ -147,6 +159,9 @@ end
 
 -- a group's caption over its artifacts, from groups(): "Tier 4: 1 of 10 known, 0 found"
 function caption(g)
+    if g.id == "leads" then
+        return f("st_almanac_leads_caption", g.name, g.total)
+    end
     return f("st_almanac_tab_caption", g.name, g.known, g.total, g.found)
 end
 
@@ -171,7 +186,10 @@ function rows(group_id, have)
         local a = C.artifacts[sec]
         if g and in_group(g, a) and listed(a, have) then
             if known(sec, have) then
-                kn[#kn + 1] = { sec = sec, name = a.name, known = true }
+                -- a lead's row names its level too
+                local w = g.leads and lead_of(sec)
+                kn[#kn + 1] = { sec = sec, name = w and w.lvl and f("st_almanac_lead_row", a.name, t(w.lvl)) or a.name,
+                                known = true }
             else
                 unk[#unk + 1] = { sec = sec, name = t("st_almanac_unknown"), known = false }
             end
@@ -582,6 +600,12 @@ function entry(sec, have)
     end
     put(detectors_block(C, a))
     put(where_block(C, a))
+    -- the survey: the word on it, and the question to ask
+    local ok, sb = pcall(function() return almanac_survey and almanac_survey.block(sec) end)
+    if not ok then
+        printf("! [almanac-page] the survey: %s", tostring(sb))
+    end
+    put(ok and sb or nil)
     put(made_block(C, a, eager))
     put(into_block(C, a))
     put(wanted_block(C, a))

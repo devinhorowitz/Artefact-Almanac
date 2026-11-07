@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.1.0 — 2026-11-07
+
+- **The survey:** on an artifact's entry, ask a scientific network where one could be. Word comes
+  1 to 3 game hours later as a PDA message in its leader's voice (Sakharov, Lebedev or Major
+  Hernandez), names a level and never a spot, and is good until the next emission or psi storm. One
+  question a game day. The network is Seasons of the Zone's forecast network when Seasons runs, so
+  one standing buys both; otherwise MCM's pick (the Ecologists, Clear Sky, the ISG, or the best of
+  the three).
+- **What standing buys:** from 200, "one could turn up" in a level the Zone rolls again when you get
+  there (its fields after an emission, Dynamic Anomalies' list after its update), named in
+  proportion to its odds, so at first a poor level is often named. Nearer 700 the named level is
+  likelier. From 700, "there is one": one lying free now, never a display case's copy, one Dynamic
+  Anomalies clears on arrival, or one the despawner releases before the word lapses; else the
+  likeliest level, with its odds in a word.
+- **Your detector limits it:** the network looks only for what the detector in your slot senses.
+- **Leads:** a tab of its own while there's word, each row naming its level; the entry's Survey
+  block shows the word, when it lapses (with Seasons, its forecast's hours or bracket), the question
+  waiting, and your standing. Questions and leads are saved with the finds.
+- MCM: the survey on or off, the network, the two standings, questions a day, and the shortest and
+  longest wait.
+- Asking keeps the entry where it was scrolled.
+
 ## 1.0.1 — 2026-11-06
 
 - **The crafting tree:** an artifact's recipe links to its whole tree, layer by layer, in the page's
